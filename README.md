@@ -11,6 +11,6 @@ Ocaml of some sort idk
 from the project's root directory, run `ocamlbuild decafc.byte`. Building to a native executable may arrive at some point.
 
 ## To run:
-For now, run `ocamlc` to enter a crude parsing repl, or `ocamlc < <file to be compiled>` to compile (well, parse) a decaf file.
+For now, run `decafc` to enter a crude parsing repl, or `decafc < <file to be compiled>` to compile (well, parse) a decaf file.
 
 Rad!

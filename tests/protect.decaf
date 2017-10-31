@@ -1,0 +1,17 @@
+class One{
+   protected int f1;
+}
+
+class Two{
+   public void test(){
+      One n1=new One();
+      n1.f1=5;
+    }
+}
+
+class A{
+   public static int main(String[] argv){
+      Object[] x=argv;
+      return 0;
+    }
+}

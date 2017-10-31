@@ -1,0 +1,51 @@
+
+class CharNode {
+
+   public CharNode (char c, CharNode x)
+   {
+     value = c;
+     next = x;
+   }
+
+   public char value() { return value; }
+   public CharNode next() { return next; }
+   public boolean isNext() { return next != null; }
+   public int length()
+   {
+      if (!isNext()) return 1;
+
+      return 1 + next().length();
+   }
+
+   private char value;
+   private CharNode next;
+}
+
+class Reverser {
+
+   public static CharNode readCharList ()
+   {
+     CharNode head = null;
+     char c;
+
+     while ((c = IO.getChar()) != -1) {
+       head = new CharNode (c, head);
+     }
+     return head;
+   }
+   
+   public static void printCharList (CharNode l)
+   {
+     while (l != null) {
+       IO.putChar(l.value());
+       l = l.next();
+     }
+   }
+   
+   public static void main(String argv[])
+   {
+     CharNode l = readCharList ();
+     printCharList(l);
+   }
+}
+

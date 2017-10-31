@@ -1,0 +1,291 @@
+class ArithmeticOperator
+{
+  int perform ( int x, int y )
+  {
+    return 0;
+  }
+
+  char toChar ()
+  {
+    return '$';
+  }
+}
+
+class Multiplication extends ArithmeticOperator
+{
+  int perform ( int x, int y )
+  {
+    return x * y;
+  }
+
+  char toChar ()
+  {
+    return '*';
+  }
+}
+
+class Addition extends ArithmeticOperator
+{
+  int perform ( int x, int y )
+  {
+    return x + y;
+  }
+  
+  char toChar ()
+  {
+    return '+';
+  }
+}
+
+class Subtraction extends ArithmeticOperator
+{
+  int perform ( int x, int y )
+  {
+    return x - y;
+  }
+  
+  char toChar ()
+  {
+    return '-';
+  }
+}
+
+class OperatorArray
+{
+  private Multiplication multiplication;
+  private Addition addition;
+  private Subtraction subtraction;
+
+  public OperatorArray ()
+  {
+    multiplication = new Multiplication ();
+    addition       = new Addition ();
+    subtraction    = new Subtraction ();
+  }
+
+  int perform ( int operation, int x, int y )
+  {
+    int result = 0;
+
+    if ( operation == 0 )
+    {
+      result = this.multiplication.perform ( x, y );
+    }
+    else if ( operation == 1 )
+    {
+      result = this.addition.perform ( x, y );
+    }
+    else if ( operation == 2 )
+    {
+      result = this.subtraction.perform ( x, y );
+    }
+
+    return result;
+  }
+
+  char toChar ( int operation )
+  {
+    if ( operation == 0 )
+    {
+      return this.multiplication.toChar ();
+    }
+    else if ( operation == 1 )
+    {
+      return this.addition.toChar ();
+    }
+    else if ( operation == 2 )
+    {
+      return this.subtraction.toChar ();
+    }
+  }
+}
+
+class Permutations
+{
+  private int [] [] three;
+
+  public Permutations ()
+  {
+    fillThree ();
+  }
+
+  private void fillThree ()
+  {
+    three = new int [ 3 ] [ 3 ];
+
+    three [ 0 ] [ 0 ] = 0;
+    three [ 0 ] [ 1 ] = 1;
+    three [ 0 ] [ 2 ] = 2;
+
+    three [ 1 ] [ 0 ] = 0;
+    three [ 1 ] [ 1 ] = 2;
+    three [ 1 ] [ 2 ] = 1;
+  
+    three [ 2 ] [ 0 ] = 1;
+    three [ 2 ] [ 1 ] = 0;
+    three [ 2 ] [ 2 ] = 2;
+
+    three [ 3 ] [ 0 ] = 1;
+    three [ 3 ] [ 1 ] = 2;
+    three [ 3 ] [ 2 ] = 0;
+
+    three [ 4 ] [ 0 ] = 2;
+    three [ 4 ] [ 1 ] = 0;
+    three [ 4 ] [ 2 ] = 1;
+
+    three [ 5 ] [ 0 ] = 2;
+    three [ 5 ] [ 1 ] = 1;
+    three [ 5 ] [ 2 ] = 0;
+  }
+
+  public int get ( int x, int y )
+  {
+    return three [ x ] [ y ];
+  }
+}
+
+class Checker
+{
+  public static void checkNumbers ( int a, int b, int c, int d )
+  {
+    OperatorArray opArray = new OperatorArray ();
+    Permutations perm = new Permutations ();
+    int rowcount = 0;
+
+    while ( rowcount < 6 )
+    {
+      int result1 = opArray.perform ( perm.get ( rowcount, 0 ), a, b );
+      int result2 =
+        opArray.perform ( perm.get ( rowcount, 1 ), result1, c );
+      int result3 =
+        opArray.perform ( perm.get ( rowcount, 2 ), result2, d );
+
+      if ( result3 == 24 )
+      {
+        IO.putInt ( a );
+        IO.putChar ( ' ' );
+        IO.putChar ( opArray.toChar ( perm.get ( rowcount, 0 ) ) );
+        IO.putChar ( ' ' );
+        IO.putInt ( b );
+        IO.putChar ( ' ' );
+        IO.putChar ( opArray.toChar ( perm.get ( rowcount, 1 ) ) );
+        IO.putChar ( ' ' );
+        IO.putInt ( c );
+        IO.putChar ( ' ' );
+        IO.putChar ( opArray.toChar ( perm.get ( rowcount, 2 ) ) );
+        IO.putChar ( ' ' );
+        IO.putInt ( d );
+        IO.putChar ( '\n' );
+      }
+
+      rowcount = rowcount + 1;
+    }
+  }
+}
+
+class Input
+{
+  public static int askForInt ()
+  {
+    IO.putString ( "Please enter an integer: " );
+    return IO.getInt ();
+  }
+}
+
+class TwentyFour
+{
+  public static void main ( String [] argv )
+  {
+    Checker.checkNumbers ( Input.askForInt (),
+                           Input.askForInt (),
+                           Input.askForInt (),
+                           Input.askForInt () );
+  }
+}
+
+/*
+class Permutations
+{
+  public int [] [] permutations;
+
+  public Permutations ( int num )
+  {
+    int fact = factorial ( num );
+    this.permutations = new int [ fact ] [ num ];
+    fillArray ( fact );
+  }
+
+  private int fillArray ( int num )
+  {
+    if ( num == 0 )
+    {
+      this.permutations [ 0 ] [ 0 ] = 0;
+      return 1;
+    }
+    else
+    {
+      int rows = num * fillArray ( num - 1 );
+      int iter = 0;
+
+      while ( iter < num )
+      {
+        int rowcount = 0;
+        while ( rowcount < rows )
+        {
+          copyRow ( rowcount, ( iter * rows ) + rowcount, num );
+          insert ( num, ( iter * rows ) + rowcount, iter, num + 1 );
+        }
+      }
+
+      return rows;
+    }
+  }
+
+  private void copyRow ( int srcRow, int destRow, int len )
+  {
+    int col = 0;
+    while ( col < len )
+    {
+      this.permutations [ destRow ] [ col ] =
+        this.permutations [ srcRow ] [ col ];
+      col = col + 1;
+    }
+  }
+
+  private void insert ( int value, int row, int col, int width )
+  {
+    if ( col >= width )
+    {
+      return;
+    }
+
+    int dest = col + 1;
+    if ( dest < width )
+    {
+      int carry = this.permutations [ row ] [ col ];
+      
+      while ( dest < width )
+      {
+        int swap = this.permutations [ row ] [ dest ];
+        this.permutations [ row ] [ dest ] = carry;
+        carry = swap;
+        dest = dest + 1;
+      }
+    }
+
+    this.permutations [ row ] [ col ] = value;
+  }
+
+  public static int factorial ( int n )
+  {
+    if ( n == 0 )
+    {
+      return 1;
+    }
+    else
+    {
+      return n * factorial ( n - 1 );
+    }
+  }
+}
+*/

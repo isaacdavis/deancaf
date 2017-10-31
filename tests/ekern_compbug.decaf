@@ -1,0 +1,28 @@
+class foo {
+	public static void main(String[] args){
+		int x, y;
+		x = 10;
+		y = 5;
+
+		IO.putString("before: ");
+		IO.putString("x="); IO.putInt(x);
+		IO.putString(" y="); IO.putInt(y);
+		IO.putChar('\n');
+
+		if(y < x){       // 5 < 10  = true
+			int t = x;
+//			t = x;   // t should = 10, but doesn't
+			x = y;   // x = 5
+			y = t;   // y = 10
+
+  			IO.putString(" t="); IO.putInt(t); // t = 0
+
+			}
+
+		IO.putString("after: ");
+		IO.putString("x="); IO.putInt(x);  // x = 5
+		IO.putString(" y="); IO.putInt(y); // y = 0
+		IO.putChar('\n');
+
+		}
+	}

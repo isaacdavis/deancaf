@@ -1,0 +1,57 @@
+/**************************************************************
+ * IOTest -- tests all the I/O functions.
+ **************************************************************/
+
+class IOTest {
+  public static char[] readChars()
+  {
+    char A[] = new char[100];
+    int i = 0;
+    while (true) {
+      if (i == 99) {
+        A[i] = '\n';
+      } else {
+        A[i] = IO.getChar();
+      }
+      if (A[i] == '\n') break;
+      i = i + 1;
+    }
+    return A;
+  }
+
+  public static void putChars(char[] A)
+  {
+    int i = 0;
+    while(i < A.length) {
+      if (A[i] == '\n') break;
+      IO.putChar (A[i]);
+      i = i + 1;
+    }
+    IO.putString("\n");
+  }
+
+  public static void main(String[] argv)
+  {
+    IO.putString("Please enter a string: ");
+    String s = IO.getLine();
+//    IO.putString("Please enter a floating-point number: ");
+//    float f = IO.getFloat(); IO.getLine();
+    IO.putString("Please enter an integer: ");
+    int i = IO.getInt();  IO.getLine();
+    IO.putString("Please enter some characters: ");
+    char[] A = readChars();
+    IO.putString("Please enter some more characters: ");
+    char p = IO.peek(); IO.getLine();
+    IO.putString("The string was: \"");
+    IO.putString(s);
+//    IO.putString("\"\nThe float was: ");
+//    IO.putFloat(f);
+    IO.putString("\nThe integer was: ");
+    IO.putInt(i);
+    IO.putString("\nThe characters were: ");
+    putChars(A);
+    IO.putString("The first of the more characters is: ");
+    IO.putChar(p);
+    IO.putString("\n");
+  }
+}

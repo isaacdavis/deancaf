@@ -1,0 +1,36 @@
+
+class X
+{
+  String val;
+
+  X() { val = "a"; }
+  String f() { return "b"; }
+  static String g() { return "c"; }
+}
+
+class Y extends X
+{
+  String val;
+
+  Y() { val = "d"; }
+  String f() { return "e"; }
+  static String g() { return "f"; }
+  void abcdef()
+  {
+    IO.putString(super.val);
+    IO.putString(super.f());
+    IO.putString(super.g());
+    IO.putString(val);
+    IO.putString(f());
+    IO.putString(g());
+    IO.putString("\n");
+  }
+}
+
+class SuperTest {
+  public static void main(String argv[])
+  {
+    IO.putString("Expected Output: abcdef\n  Actual Output: ");
+    (new Y()).abcdef();
+  }
+}

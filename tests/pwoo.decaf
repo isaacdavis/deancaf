@@ -1,0 +1,243 @@
+/******************************************************************************
+ *        NAME: Peter Woo (pwoo)                                              *
+ *      COURSE: CS176                                                         *
+ *     PROJECT: Sample                                                        *
+ ******************************************************************************
+ * DESCRIPTION:                                                               *
+ * This sample program takes a positive number of base 2 through 32 as input  *
+ * and generates a number of base 2 through 32 as output.  The program does   *
+ * not use classes because I could not figure out how to get them to work.    *
+ * It serves to exercise the mathematical and functional characteristics of   *
+ * the decaf compiler more than the compiler's object-oriented                *
+ * interpretation.                                                            *
+ *****************************************************************************/
+
+class BasesConversionHolder {
+
+  private int _sourceBase;
+  private int _targetBase;
+  private char[] _source;
+  private char[] _target;
+  
+  public BasesConversionHolder() {
+    _sourceBase = 2;
+    _targetBase = 2;
+    _source = new char[65];
+    _target = new char[65];
+  }
+
+  public int getSourceBase() {
+    return _sourceBase;
+  }
+
+  public int getTargetBase() {
+    return _targetBase;
+  }
+
+  public char[] getSourceString() {
+    return _source;
+  }
+
+  public char[] getTargetString() {
+    return _target;
+  }
+
+  public void setSourceBase(int base) {
+    _sourceBase = base;
+  }
+
+  public void setTargetBase(int base) {
+    _targetBase = base;
+  }
+
+  public void setSourceString(char[] source) {
+    int i = 0;
+    while(i<64 && source[i]!=0) {
+      _source[i] = source[i];
+      i = i+1;
+    }
+    source[i] = 0;
+  }
+
+  public void setTargetString(char[] target) {
+    int i = 0;
+    while(i<64 && target[i]!=0) {
+      _target[i] = target[i];
+      i = i+1;
+    }
+    target[i] = 0;
+  }
+
+}
+
+class Bases {
+
+  public static void displayWelcome() {
+    IO.putString("****************************************");
+    IO.putString("***************************************\n");
+    IO.putString("\n");
+    IO.putString("Welcome to BaseConverter\n");
+    IO.putString("\n");
+    IO.putString("This program takes a positive number of");
+    IO.putString("base 2 through 32 as input with up to 8\n");
+    IO.putString("digits and generates another number of");
+    IO.putString("base 2 through 32 as output.\n");
+    IO.putString("\n");
+    IO.putString("\n");
+    IO.putString("Please press any key to continue...");
+  }
+
+  public static void runWelcome() {
+    displayWelcome();
+    IO.getChar();
+    IO.putString("\n");
+    IO.putString("\n");
+  }
+
+  public static void displayMenu() {
+    IO.putString("****************************************");
+    IO.putString("***************************************\n");
+    IO.putString("\n");
+    IO.putString("Please select from one of the following options:\n");
+    IO.putString("\n");
+    IO.putString("    H = Convert from decimal to hexadecimal\n");
+    IO.putString("    D = Convert from hexadecimal to decimal\n");
+    IO.putString("    N = Perform another type of base conversion\n");
+    IO.putString("    X = Exit program\n");
+    IO.putString("\n");
+    IO.putString("> ");
+  }
+
+  public static int getMenuResponse() {
+    char response;
+    response = IO.getChar();
+    IO.putString("\n\n");
+
+    if((response=='H') || (response=='h')) {
+      return 1;
+    }
+    else if((response=='D') || (response=='d')) {
+      return 2;
+    }
+    else if((response=='N') || (response=='n')) {
+      return 3;
+    }
+    else if((response=='X') || (response=='x')) {
+      return 0;
+    }
+    else {
+      return -1;
+    }
+  }
+
+  public static void getBases(BasesConversionHolder holder) {
+    int source=0;
+    int target=0;
+
+    while((source < 2) || (source > 32)) {
+      IO.putString("\n");
+      IO.putString("Please enter a base for the source (2-32)> \n");
+      source = IO.getInt();
+    }
+    holder.setSourceBase(source);
+
+    while((target < 2) || (target > 32)) {
+      IO.putString("Please enter a base for the target (2-32)> \n");
+      target = IO.getInt();
+    }
+    holder.setTargetBase(target);
+    
+  }
+
+  public static void getSourceNumber(BasesConversionHolder holder) {
+  }
+
+  public static void convertNumber(BasesConversionHolder holder) {
+  }
+
+  public static void displayNumber(BasesConversionHolder holder) {
+  }
+
+  public static void runMenu() {
+    int response = 1;
+    BasesConversionHolder conversionHolder = new BasesConversionHolder();
+
+    while(response != 0) {
+      displayMenu();
+      response = getMenuResponse();
+      IO.putInt(response);
+      if(response == 1) {
+        conversionHolder.setSourceBase(10);
+        conversionHolder.setTargetBase(16);
+        getSourceNumber(conversionHolder);
+        convertNumber(conversionHolder);
+        displayNumber(conversionHolder);
+      }
+      else if(response == 2) {
+        conversionHolder.setSourceBase(10);
+        conversionHolder.setTargetBase(16);
+        getSourceNumber(conversionHolder);
+        convertNumber(conversionHolder);
+        displayNumber(conversionHolder);
+      }
+      else if(response == 3) {
+        getBases(conversionHolder);
+        getSourceNumber(conversionHolder);
+        convertNumber(conversionHolder);
+        displayNumber(conversionHolder);
+      }
+      else if(response == -1) {
+        IO.putString("Unrecognized result; please try again...\n\n");
+      }
+    }
+  }
+
+  public static void displayGoodbye() {
+    IO.putString("\n");
+    IO.putString("\n");
+    IO.putString("****************************************");
+    IO.putString("***************************************\n");
+    IO.putString("\n");
+    IO.putString("Thank you for using BaseConverter\n");
+    IO.putString("\n");
+    IO.putString("****************************************");
+    IO.putString("***************************************\n");
+  }
+
+  public static void main() {
+
+    runWelcome();
+
+    runMenu();
+
+    displayGoodbye();
+
+    /*
+    char currentchar = 0;
+    char[] inline = new char[100];
+    int i = 0;
+
+    while(i<99 && currentchar!='\n') {
+      currentchar = IO.getChar();
+      inline[i] = currentchar;
+      i = i+1;
+    }
+    inline[i] = 0;
+
+    i = 0;
+    while(inline[i] != 0) {
+      IO.putChar(inline[i]);
+      i = i+1;
+    }
+    IO.putChar('\n');
+    
+    printWelcome();
+
+    bool continueConverting = true;
+    while(continueConverting) {
+      continueConverting = convertUI();
+    }
+    */
+  }
+
+}

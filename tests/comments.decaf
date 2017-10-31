@@ -1,0 +1,43 @@
+
+class CX
+{
+  String val; // comment 1
+
+  CX() { val = "a"; } /* comme
+  nt */
+  String f() { return "b"; }
+  static String g() { return "c"; }
+
+}
+
+class CY extends CX
+/* commenet // "sddfhjasdjfkls" 'sd'fsadkljjksdahfkjs\\ // */
+{
+  String val;
+  // /*\f\d\d\d\d /* sdkfjadjflksd
+
+/*
+/ /*/
+
+  CY() { val = "d"; }
+  String f() { return "e"; }
+  static String g() { return "f"; }
+  void abcdef()
+  {
+    IO.putString(super.val);
+    IO.putString(super.f());
+    IO.putString(super.g());
+    IO.putString(val);
+    IO.putString(f());
+    IO.putString(g());
+    IO.putString("\n");
+  }
+}
+
+class CmmtTest {
+  public static void main(String argv[])
+  {
+    IO.putString("Expected Output: abcdef\n  Actual Output: ");
+    (new CY()).abcdef();
+  }
+}

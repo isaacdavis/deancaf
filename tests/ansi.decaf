@@ -1,0 +1,99 @@
+class ansi {
+    //private static IOClass IO = new IOClass();
+
+    private static void esc() {
+        IO.putChar(27);
+        IO.putChar('[');
+    }
+
+    private static void putchars(int n) {
+        int tens = (n / 10) % 10;
+        int ones = n % 10;
+        IO.putChar(tens + 48);
+        IO.putChar(ones + 48);
+    }
+
+    public static void cls() {
+        esc();
+        IO.putChar('2');
+        IO.putChar('J');
+    }
+
+    public static void position(int row, int col) {
+        esc();
+        putchars(row);
+        IO.putChar(';');
+        putchars(col);
+        IO.putChar('H');
+    }
+
+    public static void home() {
+        esc();
+        IO.putChar('H');
+    }
+
+    
+    public static void setattrs(int a, int fg, int bg) {
+        int i;
+        esc();
+        IO.putChar('0');
+        IO.putChar('m');
+        esc();
+        putchars(a);
+        IO.putChar(';');
+        putchars(fg);
+        IO.putChar(';');
+        putchars(bg);
+        IO.putChar('m');
+    }
+
+    public static void up(int n) {
+        esc();
+        putchars(n);
+        IO.putChar('A');
+    }
+
+    public static void down(int n) {
+        esc();
+        putchars(n);
+        IO.putChar('B');
+    }
+
+    public static void right(int n) {
+        esc();
+        putchars(n);
+        IO.putChar('C');
+    }
+
+    public static void left(int n) {
+        esc();
+        putchars(n);
+        IO.putChar('D');
+    }
+
+    public static void main(String[] args) {
+        cls();
+
+        setattrs(1, 34, 40);
+        home();
+        IO.putString("Hello world!");
+        up(1);
+        right(55);
+        IO.putString("Hello world!");
+        home();
+        down(25);
+        IO.putString("Hello world!");
+        up(1);
+        right(55);
+        IO.putString("Hello world!");
+        home();
+        down(12);
+        right(30);
+        setattrs(1, 31, 40);
+        IO.putString("World, hello!");
+        home();
+        down(26);
+        setattrs(0, 39, 49);
+    }
+}
+

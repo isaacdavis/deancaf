@@ -123,16 +123,6 @@ rule read =
   | ">>="           { raise_forbidden_error lexbuf }
   | ">>>="          { raise_forbidden_error lexbuf }
 
-  (*Comments*)
-  | "//"[^'\r''\n']* { new_line lexbuf; read lexbuf}
-  | comment         { read lexbuf}
-
-  (* Identifier *)
-  | id              { ID(Lexing.lexeme lexbuf)}
-
-  (* Literals *)
-  | integer         { INT(int_of_string (Lexing.lexeme lexbuf))}
-
   (* TODO fix char value*)
   | char            { CHAR(get (Lexing.lexeme lexbuf) 0) }
   | string          { STRING(Lexing.lexeme lexbuf)}
@@ -146,6 +136,16 @@ rule read =
   | "char"          { CHARTYPE }
   | "int"           { INTTYPE }
   | "void"          { VOIDTYPE }
+
+  (*Comments*)
+  | "//"[^'\r''\n']* { new_line lexbuf; read lexbuf}
+  | comment         { read lexbuf}
+
+  (* Identifier *)
+  | id              { ID(Lexing.lexeme lexbuf)}
+
+  (* Literals *)
+  | integer         { INT(int_of_string (Lexing.lexeme lexbuf))}
 
   (* Punctuation *)
   | "("             { LPAREN }
@@ -175,7 +175,7 @@ rule read =
   | "||"            { OR }
   | "%"             { MOD } 
 
-  | eof             { raise Eof }
+  | eof             { EOF }
 
   | _               { raise_syntax_error lexbuf }
   

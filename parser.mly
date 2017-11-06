@@ -2,7 +2,7 @@
 %{
 
 open List
-open Decafast
+open Ast
 
 let objectClass = {super = ClassType("Object")} 
 
@@ -62,26 +62,36 @@ let objectClass = {super = ClassType("Object")}
 %token OR
 %token MOD 
 
+%token EOF
+
 %right ASGN
 %left OR
 %left AND
-%left NEQ
-%left EQUALS
+%left EQUALS NEQ
 %nonassoc GEQ LEQ GREATER LESS
 %left PLUS MINUS
 %left MOD DIV TIMES
-%nonassoc NOT
-%nonassoc UMINUS
-%nonassoc UPLUS
+%nonassoc NOT UMINUS UPLUS
+
+/*
+    RE: LOWER_THAN_ELSE dangling else solution: see 
+    https://stackoverflow.com/questions/1737460/how-to-find-shift-reduce-conflict-in-this-yacc-file
+*/
+%nonassoc LOWER_THAN_ELSE
+%nonassoc ELSE
+
+/* TODO this is janky janky */
+%nonassoc LOWER_THAN_LBRACKET 
 
 %start classList
-%type <Decafast.astClass list> classList
+%type <Ast.astClass list> classList
 
 %%
 
 classList
 	: singleClass classList                     { [$1]@$2 }
 	| singleClass                               { [$1] }
+	| EOF                                       { [] }
 	;
 
 singleClass
@@ -108,7 +118,7 @@ member
 
 /* TODO condense field lists into one list - do this after parsing is done? List.map (fun varDecl -> Field($1, $2, varDecl)) $3  */
 field
-	: modifierlist typeD varDeclList    SEMICOLON
+	: modifierlist typeD varDeclList SEMICOLON
 	{
 		Field($1, $2, $3)
 	}
@@ -191,7 +201,8 @@ statementList
 statement
 	: SEMICOLON                                         { EmptyStatement }
 	| typeD varDeclList SEMICOLON                       { DeclStatement($1, $2) }
-	| IF LPAREN expr RPAREN statement                   { IfStatement($3, $5, None) }
+	| IF LPAREN expr RPAREN statement
+		%prec LOWER_THAN_ELSE                           { IfStatement($3, $5, None) }
 	| IF LPAREN expr RPAREN statement ELSE statement    { IfStatement($3, $5, Some $7) }
 	| expr SEMICOLON                                    { ExprStatement($1) }
 	| WHILE LPAREN expr RPAREN statement                { WhileStatement($3, $5) }
@@ -203,9 +214,10 @@ statement
 	| SUPER actualArgs SEMICOLON                        { SuperStatement($2) }
 	;
 
+/* TODO is prec UMINUS here ok? */
 expr
 	: expr binOp expr                           { BinOpExpr($2, $1, $3) }
-	| unOp expr                                 { UnOpExpr($1, $2) }
+	| unOp expr %prec UMINUS                    { UnOpExpr($1, $2) }
 	| primary                                   { PrimaryExpr($1) }
 	;
 

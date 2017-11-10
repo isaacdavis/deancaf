@@ -1,6 +1,7 @@
 
 %{
 
+open List
 open Ast
 
 let objectClass = {super = ClassType("Object")} 
@@ -112,6 +113,7 @@ member
     | ctor                                      { $1 }
     ;
 
+/* TODO condense field lists into one list - do this after parsing is done? List.map (fun varDecl -> Field($1, $2, varDecl)) $3  */
 field
     : modifierlist typeD varDeclList SEMICOLON
     {
@@ -150,7 +152,27 @@ formalArgList
     ;
 
 formalArg
-    : typeD varDeclId                           { {name = $2; t = $1} }
+    : typeD varDeclId
+    {
+        let declName, declCnt = $2 in
+        if declCnt != 0 then
+            match $1 with
+            | ClassType s ->
+                {name = declName; t = ArrayType(ClassType(s), declCnt)}
+            | ArrayType (arrayT, c) ->
+                {name = declName; t = ArrayType(arrayT, c + declCnt)}
+            | BoolType ->
+                {name = declName; t = ArrayType(BoolType, declCnt)}
+            | CharType ->
+                {name = declName; t = ArrayType(CharType, declCnt)}
+            | IntType ->
+                {name = declName; t = ArrayType(IntType, declCnt)}
+            (* TODO should a void type in a formal arg be a parse error? Or maybe offload to type checker *)
+            | VoidType ->
+                {name = declName; t = ArrayType(VoidType, declCnt)}
+        else
+            {name = declName; t = $1}
+    }
     ;
 
 typeD
@@ -213,7 +235,6 @@ statement
     | SUPER actualArgs SEMICOLON                        { SuperStatement($2) }
     ;
 
-/* TODO is prec UMINUS here ok? */
 expr
     : expr ASGN expr                            { BinOpExpr(Asgn, $1, $3) }
     | expr GREATER expr                         { BinOpExpr(Greater, $1, $3) }

@@ -123,7 +123,6 @@ rule read =
   | ">>="           { raise_forbidden_error lexbuf }
   | ">>>="          { raise_forbidden_error lexbuf }
 
-  (* TODO fix char value*)
   | char            { CHAR(get (Lexing.lexeme lexbuf) 0) }
   | string          { STRING(Lexing.lexeme lexbuf)}
   | "true"          { BOOL(true)}
@@ -137,7 +136,7 @@ rule read =
   | "int"           { INTTYPE }
   | "void"          { VOIDTYPE }
 
-  (*Comments*)
+  (* Comments *)
   | "//"[^'\r''\n']* { new_line lexbuf; read lexbuf}
   | comment         { read lexbuf}
 

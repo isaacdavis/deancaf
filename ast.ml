@@ -55,13 +55,12 @@ let strModifier = function
 
 type astType =
     ClassType of string
-  | ArrayType of astType * int (* TODO Dimension? *)
+  | ArrayType of astType * int
   | BoolType
   | CharType
   | IntType
   | VoidType
-  | NullType
-  (* TODO init, meta? *)
+  (* TODO null, init, meta? *)
 
 let rec strType = function
   | ClassType s -> "classT(" ^ s ^ ")"
@@ -70,7 +69,6 @@ let rec strType = function
   | CharType -> "charT"
   | IntType -> "intT"
   | VoidType -> "voidT"
-  | NullType -> "nullT"
 
 type astLiteral =
     NullLiteral

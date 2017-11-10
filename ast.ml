@@ -120,7 +120,7 @@ and astPrimary =
   | NonNewArrayPrimary of astNonNewArrayExpr
   | IdPrimary of string
 
-type astVarDecl = {name: string; expr: astExpr option}
+type astVarDecl = {name: string; count: int; expr: astExpr option}
 
 type astStatement = 
     EmptyStatement

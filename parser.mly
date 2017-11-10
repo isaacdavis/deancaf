@@ -1,7 +1,6 @@
 
 %{
 
-open List
 open Ast
 
 let objectClass = {super = ClassType("Object")} 
@@ -113,7 +112,6 @@ member
     | ctor                                      { $1 }
     ;
 
-/* TODO condense field lists into one list - do this after parsing is done? List.map (fun varDecl -> Field($1, $2, varDecl)) $3  */
 field
     : modifierlist typeD varDeclList SEMICOLON
     {
@@ -179,16 +177,14 @@ varDeclList
     | varDecl                                   { [$1] }
     ;
 
-/* TODO fix fix fix fix */
 varDecl
-    : varDeclId ASGN expr                       { {name = $1; expr = Some $3} }
-    | varDeclId                                 { {name = $1; expr = None} }
+    : varDeclId ASGN expr                       { {name = fst $1; count = snd $1; expr = Some $3} }
+    | varDeclId                                 { {name = fst $1; count = snd $1; expr = None} }
     ;
 
-/* TODO fix fix fix fix */
 varDeclId
-    : varDeclId LBRACKET RBRACKET               { $1 }
-    | ID                                        { $1 }
+    : varDeclId LBRACKET RBRACKET               { fst $1, snd $1 + 1 }
+    | ID                                        { $1, 0 }
     ;
 
 block

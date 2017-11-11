@@ -5,14 +5,37 @@ open String
 
 exception ForbiddenWordError of string
 exception SyntaxError of string
-exception Eof
 
 let raise_forbidden_error lexbuf =
-  raise (ForbiddenWordError("Forbidden word: " ^ Lexing.lexeme lexbuf ^ "\n"))
+  let pos = Lexing.lexeme_start_p lexbuf in
+  let lnum = string_of_int pos.pos_lnum in
+  let column = string_of_int (1 + pos.pos_cnum - pos.pos_bol) in
+  let token = Lexing.lexeme lexbuf in
+  let s = "Forbidden word: line " ^ lnum ^ ", column " ^ column ^ ": " ^ token ^ "\n" in
+  raise (ForbiddenWordError(s))
 
 let raise_syntax_error lexbuf =
-  raise (SyntaxError("Syntax Error: " ^ Lexing.lexeme lexbuf ^ "\n"))
+  let pos = Lexing.lexeme_start_p lexbuf in
+  let lnum = string_of_int pos.pos_lnum in
+  let column = string_of_int (1 + pos.pos_cnum - pos.pos_bol) in
+  let token = Lexing.lexeme lexbuf in
+  let s = "Syntax error: line " ^ lnum ^ ", column " ^ column ^ ": " ^ token ^ "\n" in
+  raise (SyntaxError(s))
 
+let parse_char lexbuf =
+  (* TODO we shouldn't ever really hit error cases here, right? *)
+  let s = Lexing.lexeme lexbuf in
+  match length s with
+  | 4 ->
+    (match get s 1 with
+    | '\\' ->
+      (match get s 2 with
+      | 't' -> '\t'
+      | 'n' -> '\n'
+      | c -> c)
+    | _ -> raise_syntax_error lexbuf)
+  | 3 -> get s 1
+  | _ -> raise_syntax_error lexbuf
 }
 
 let whitespace = [' ' '\t']+
@@ -27,9 +50,9 @@ let number = ['0'-'9']
 let id = ('_' | letter) (letter | number | '_')*  
 
 let integer = '0' | (['1'-'9'] number*)
-let char = '\'' [^'\\''\n''\''] | '\\'[^'n''t'] | "\\n" | "\\t" '\''
-(* TODO fix string regex *)
-let string = '\"' ([^'\n''\"''\\'] | ('\\''\\')*'\\''\"')*'\"'
+let char = '\'' ([^'\\''\n''\''] | '\\'[^'n''t'] | "\\n" | "\\t") '\''
+(* TODO fix string regex and parse it good *)
+let string = "\"" ([^'\\''\n''\''] | '\\'[^'n''t'] | "\\n" | "\\t")* "\""
 
 rule read =
   parse
@@ -123,7 +146,7 @@ rule read =
   | ">>="           { raise_forbidden_error lexbuf }
   | ">>>="          { raise_forbidden_error lexbuf }
 
-  | char            { CHAR(get (Lexing.lexeme lexbuf) 0) }
+  | char            { CHAR(parse_char lexbuf) }
   | string          { STRING(Lexing.lexeme lexbuf)}
   | "true"          { BOOL(true)}
   | "false"         { BOOL(false)}
@@ -137,8 +160,8 @@ rule read =
   | "void"          { VOIDTYPE }
 
   (* Comments *)
-  | "//"[^'\r''\n']* { new_line lexbuf; read lexbuf}
-  | comment         { read lexbuf}
+  | "//"[^'\r''\n']*  { read lexbuf }
+  | comment           { read lexbuf }
 
   (* Identifier *)
   | id              { ID(Lexing.lexeme lexbuf)}

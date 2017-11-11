@@ -115,10 +115,8 @@ member
 
 /* TODO condense field lists into one list - do this after parsing is done? List.map (fun varDecl -> Field($1, $2, varDecl)) $3  */
 field
-    : modifierlist typeD varDeclList SEMICOLON
-    {
-        Field($1, $2, $3)
-    }
+    : modifierlist typeD varDeclList SEMICOLON  { Field($1, $2, $3) }
+    | typeD varDeclList SEMICOLON               { Field([Public], $1, $2) }
     ;
 
 modifierlist

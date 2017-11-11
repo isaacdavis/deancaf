@@ -171,8 +171,8 @@ and strPrimary = function
 
 let strVarDecl v =
   match v.expr with
-    | Some e -> "strVarDecl(" ^ v.name ^ ", " ^ strExpr e ^ ")"
-    | None -> "strVarDecl(" ^ v.name ^ ")"
+    | Some e -> "varDecl(" ^ v.name ^ ", " ^ strExpr e ^ ")"
+    | None -> "varDecl(" ^ v.name ^ ")"
 
 let rec strStatement s =
   let strAppend f a x =

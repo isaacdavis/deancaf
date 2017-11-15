@@ -3,6 +3,7 @@
 
 open List
 open Ast
+open Symboltable
 
 let objectClass = {super = ClassType("Object")} 
 
@@ -92,10 +93,18 @@ classList
     ;
 
 singleClass
-    : CLASS ID LBRACE RBRACE                    { {name = $2; super = objectClass; memberList = []} }
-    | CLASS ID super LBRACE RBRACE              { {name = $2; super = $3; memberList = []} }
-    | CLASS ID LBRACE memberlist RBRACE         { {name = $2; super = objectClass; memberList = $4} }
-    | CLASS ID super LBRACE memberlist RBRACE   { {name = $2; super = $3; memberList = $5} }
+    : CLASS ID LBRACE RBRACE                    { {name = $2; super = objectClass; memberList = [];
+                                                   fieldTable= new symbol_table;
+                                                   methodTable = new symbol_table} }
+    | CLASS ID super LBRACE RBRACE              { {name = $2; super = $3; memberList = [];
+                                                   fieldTable= new symbol_table;
+                                                   methodTable = new symbol_table} }
+    | CLASS ID LBRACE memberlist RBRACE         { {name = $2; super = objectClass; memberList = $4;
+                                                   fieldTable= new symbol_table;
+                                                   methodTable = new symbol_table} }
+    | CLASS ID super LBRACE memberlist RBRACE   { {name = $2; super = $3; memberList = $5;
+                                                   fieldTable= new symbol_table;
+                                                   methodTable = new symbol_table} }
     ;
 
 super
@@ -103,8 +112,8 @@ super
     ;
 
 memberlist
-    : member memberlist                         { [$1]@$2 }
-    | member                                    { [$1] }
+    : member memberlist                         { $1@$2 }
+    | member                                    { $1 }
     ;
 
 member
@@ -115,8 +124,8 @@ member
 
 /* TODO condense field lists into one list - do this after parsing is done? List.map (fun varDecl -> Field($1, $2, varDecl)) $3  */
 field
-    : modifierlist typeD varDeclList SEMICOLON  { Field($1, $2, $3) }
-    | typeD varDeclList SEMICOLON               { Field([Public], $1, $2) }
+    : modifierlist typeD varDeclList SEMICOLON  { List.map (fun d -> Field($1, $2, d)) $3 }
+    | typeD varDeclList SEMICOLON               { List.map (fun d -> Field([Public], $1, d)) $2 }
     ;
 
 modifierlist
@@ -125,11 +134,11 @@ modifierlist
     ;
 
 methodDecl
-    : modifierlist typeD ID formalArgs block    { Method($3, $2, $1, $4, $5) }
+    : modifierlist typeD ID formalArgs block    { [Method($3, $2, new symbol_table, $1, $4, $5)] }
     ;
 
 ctor
-    : modifierlist ID formalArgs block          { Constructor($2, ClassType($2), $1, $3, $4) }
+    : modifierlist ID formalArgs block          { [Constructor($2, ClassType($2), $1, $3, $4)] }
     ;
 
 modifier
@@ -168,6 +177,7 @@ formalArg
             (* TODO should a void type in a formal arg be a parse error? Or maybe offload to type checker *)
             | VoidType ->
                 {name = declName; t = ArrayType(VoidType, declCnt)}
+            | MethodType (_, _, _) -> raise Parsing.Parse_error
         else
             {name = declName; t = $1}
     }
@@ -221,15 +231,15 @@ statement
     : SEMICOLON                                         { EmptyStatement }
     | typeD varDeclList SEMICOLON                       { DeclStatement($1, $2) }
     | IF LPAREN expr RPAREN statement
-        %prec LOWER_THAN_ELSE                           { IfStatement($3, $5, None) }
-    | IF LPAREN expr RPAREN statement ELSE statement    { IfStatement($3, $5, Some $7) }
+        %prec LOWER_THAN_ELSE                           { IfStatement(new symbol_table, $3, $5, None) }
+    | IF LPAREN expr RPAREN statement ELSE statement    { IfStatement(new symbol_table, $3, $5, Some $7) }
     | expr SEMICOLON                                    { ExprStatement($1) }
-    | WHILE LPAREN expr RPAREN statement                { WhileStatement($3, $5) }
+    | WHILE LPAREN expr RPAREN statement                { WhileStatement(new symbol_table, $3, $5) }
     | RETURN SEMICOLON                                  { ReturnStatement(None) }
     | RETURN expr SEMICOLON                             { ReturnStatement(Some $2) }
     | CONTINUE SEMICOLON                                { ContinueStatement }
     | BREAK SEMICOLON                                   { BreakStatement }
-    | block                                             { BlockStatement($1) }
+    | block                                             { BlockStatement(new symbol_table, $1) }
     | SUPER actualArgs SEMICOLON                        { SuperStatement($2) }
     ;
 

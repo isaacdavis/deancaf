@@ -40,7 +40,7 @@ let parse_char lexbuf =
 
 let whitespace = [' ' '\t']+
 let newline = '\r' | '\n' | "\r\n"
-let comment = "/*"([^'*'] | ('*'+ [^'/']))*"*/"
+let comment = "/*"([^'*'] | ('*'+ [^'/']))* '*'? "*/"
 
 let lower = ['a'-'z']
 let upper = ['A'-'Z']

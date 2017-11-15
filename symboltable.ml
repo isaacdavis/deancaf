@@ -1,13 +1,21 @@
-module StrMap = Map.Make(struct type t = string let compare = compare end)
 
 class ['a] symbol_table = object
 
-  val mutable table = StrMap.empty
+  val mutable table : (string, 'a) Hashtbl.t = Hashtbl.create 0
 
   method put (k : string) (v : 'a) =
-    table <- StrMap.add k v table
+    Hashtbl.add table k v
 
-  method get (k : string) :'a = StrMap.find k table
+  method get (k : string) : 'a = Hashtbl.find table k
+
+  method set_table t =
+    table <- t
+
+  method clone =
+    let clone_table : 'a symbol_table = new symbol_table in
+    let clone_hash = Hashtbl.copy table in
+    clone_table#set_table clone_hash;
+    clone_table
 
 end
 
@@ -22,6 +30,7 @@ class ['a] symbol_table_manager = object
     Stack.pop stack
 
 end
+
 
 (* let walk_binop = function
   | Asgn

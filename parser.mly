@@ -5,7 +5,92 @@ open List
 open Ast
 open Symboltable
 
-let objectClass = {super = ClassType("Object")} 
+let objectClass = {super = ClassType("Object")}
+
+let make_default_ctor name =
+    Constructor(ClassType(name), new symbol_table, [Public], [],
+                [SuperStatement([])])
+
+let make_class name super members =
+    let field_table : astMember symbol_table = new symbol_table in
+    let method_table : astMember symbol_table = new symbol_table in
+    let ctor = ref (make_default_ctor name) in
+
+    let add_symbol s =
+        match s with
+            | Field (_, _, var_decl) -> field_table#put var_decl.name s 
+            | Method (n, _, _, _, _, _) -> method_table#put n s
+            | Constructor (_, _, _, _, _) -> ctor := s
+    in
+
+    List.iter add_symbol members;
+    {t = ClassType(name); super = super; constructor = !ctor;
+     fieldTable = field_table; methodTable = method_table}
+
+let make_method name t mods formals statements =
+    let var_table : astType symbol_table = new symbol_table in
+    let add_symbol s =
+        match s with
+            | DeclStatement (dt, decls) ->
+                List.iter (fun d -> var_table#put d.name dt) decls
+            | _ -> ()
+    in
+
+    List.iter add_symbol statements;
+    Method(name, t, var_table, mods, formals, statements)
+
+let make_constructor t mods formals statements =
+    let var_table : astType symbol_table = new symbol_table in
+    let add_symbol s =
+        match s with
+            | DeclStatement (dt, decls) ->
+                List.iter (fun d -> var_table#put d.name dt) decls
+            | _ -> ()
+    in
+
+    List.iter add_symbol statements;
+    Constructor(t, var_table, mods, formals, statements)
+
+let make_while e s =
+    let var_table = ref (new symbol_table) in
+    (match s with
+        | DeclStatement (dt, decls) ->
+            List.iter (fun d -> !var_table#put d.name dt) decls
+        | BlockStatement (btable, _) -> var_table := btable#clone 
+        | _ -> ());
+    WhileStatement(!var_table, e, s)
+
+let make_if e st sfo =
+    let true_table = ref (new symbol_table) in
+    let false_table = ref (new symbol_table) in
+
+    (match st with
+        | DeclStatement (dt, decls) ->
+            List.iter (fun d -> !true_table#put d.name dt) decls
+        | BlockStatement (btable, _) -> true_table := btable#clone 
+        | _ -> ());
+
+    match sfo with
+        | Some sf ->
+            ((match sf with
+                | DeclStatement (dt, decls) ->
+                    List.iter (fun d -> !false_table#put d.name dt) decls
+                | BlockStatement (btable, _) -> false_table := btable#clone 
+                | _ -> ());
+             IfStatement(!true_table, Some !false_table, e, st, sfo))
+        | None -> IfStatement(!true_table, None, e, st, sfo)
+
+let make_block statements =
+    let var_table : astType symbol_table = new symbol_table in
+    let add_symbol s =
+        match s with
+            | DeclStatement (dt, decls) ->
+                List.iter (fun d -> var_table#put d.name dt) decls
+            | _ -> ();
+    in
+
+    List.iter add_symbol statements;
+    BlockStatement(var_table, statements)
 
 %}
 
@@ -93,18 +178,13 @@ classList
     ;
 
 singleClass
-    : CLASS ID LBRACE RBRACE                    { {name = $2; super = objectClass; memberList = [];
-                                                   fieldTable= new symbol_table;
-                                                   methodTable = new symbol_table} }
-    | CLASS ID super LBRACE RBRACE              { {name = $2; super = $3; memberList = [];
-                                                   fieldTable= new symbol_table;
-                                                   methodTable = new symbol_table} }
-    | CLASS ID LBRACE memberlist RBRACE         { {name = $2; super = objectClass; memberList = $4;
-                                                   fieldTable= new symbol_table;
-                                                   methodTable = new symbol_table} }
-    | CLASS ID super LBRACE memberlist RBRACE   { {name = $2; super = $3; memberList = $5;
-                                                   fieldTable= new symbol_table;
-                                                   methodTable = new symbol_table} }
+    : CLASS ID LBRACE RBRACE                    { make_class $2 objectClass [] }
+
+    | CLASS ID super LBRACE RBRACE              { make_class $2 $3 [] }
+
+    | CLASS ID LBRACE memberlist RBRACE         { make_class $2 objectClass $4 }
+
+    | CLASS ID super LBRACE memberlist RBRACE   { make_class $2 $3 $5 }
     ;
 
 super
@@ -134,11 +214,11 @@ modifierlist
     ;
 
 methodDecl
-    : modifierlist typeD ID formalArgs block    { [Method($3, $2, new symbol_table, $1, $4, $5)] }
+    : modifierlist typeD ID formalArgs block    { [make_method $3 $2 $1 $4 $5] }
     ;
 
 ctor
-    : modifierlist ID formalArgs block          { [Constructor($2, ClassType($2), $1, $3, $4)] }
+    : modifierlist ID formalArgs block          { [make_constructor (ClassType($2)) $1 $3 $4] }
     ;
 
 modifier
@@ -231,15 +311,15 @@ statement
     : SEMICOLON                                         { EmptyStatement }
     | typeD varDeclList SEMICOLON                       { DeclStatement($1, $2) }
     | IF LPAREN expr RPAREN statement
-        %prec LOWER_THAN_ELSE                           { IfStatement(new symbol_table, $3, $5, None) }
-    | IF LPAREN expr RPAREN statement ELSE statement    { IfStatement(new symbol_table, $3, $5, Some $7) }
+        %prec LOWER_THAN_ELSE                           { make_if $3 $5 None }
+    | IF LPAREN expr RPAREN statement ELSE statement    { make_if $3 $5 (Some $7) }
     | expr SEMICOLON                                    { ExprStatement($1) }
     | WHILE LPAREN expr RPAREN statement                { WhileStatement(new symbol_table, $3, $5) }
     | RETURN SEMICOLON                                  { ReturnStatement(None) }
     | RETURN expr SEMICOLON                             { ReturnStatement(Some $2) }
     | CONTINUE SEMICOLON                                { ContinueStatement }
     | BREAK SEMICOLON                                   { BreakStatement }
-    | block                                             { BlockStatement(new symbol_table, $1) }
+    | block                                             { make_block $1 }
     | SUPER actualArgs SEMICOLON                        { SuperStatement($2) }
     ;
 

@@ -82,7 +82,7 @@ type astVarDecl = {name: string; count: int; expr: astExpr option}
 type astStatement = 
     EmptyStatement
   | DeclStatement of astType * astVarDecl list
-  | IfStatement of astType symbol_table * astExpr * astStatement * astStatement option
+  | IfStatement of astType symbol_table * astType symbol_table option * astExpr * astStatement * astStatement option
   | ExprStatement of astExpr
   | WhileStatement of astType symbol_table * astExpr * astStatement
   | ReturnStatement of astExpr option
@@ -94,11 +94,11 @@ type astStatement =
 type astMember =
     Field of astModifier list * astType * astVarDecl
   | Method of string * astType * astType symbol_table * astModifier list * astFormal list * astStatement list
-  | Constructor of string * astType * astModifier list * astFormal list * astStatement list
+  | Constructor of astType * astType symbol_table * astModifier list * astFormal list * astStatement list
 
-type astClass = {name: string; super: astSuper; memberList: astMember list;
-                 fieldTable: astType symbol_table;
-                 methodTable: astType symbol_table}
+type astClass = {t: astType; super: astSuper; constructor: astMember;
+                 fieldTable: astMember symbol_table;
+                 methodTable: astMember symbol_table}
 
 (*
   "toString" functions for printing an AST although big ASTs are hard to read
@@ -161,7 +161,7 @@ let rec strExpr = function
   | BinOpExpr (op, a, b) -> "binOpExpr(" ^ strBinOp op ^ ", " ^ strExpr a ^ ", " ^ strExpr a ^ ")"
   | PrimaryExpr p -> "primaryExpr(" ^ strPrimary p ^ ")"
 
-and strNewArrayExpr n =
+and strNewArrayExpr (n : astNewArrayExpr) =
   let strAppend a x =
     a ^ strExpr x ^ "; " in
   "newArrayExpr(" ^ strType n.t ^ ", " ^ List.fold_left strAppend "" n.dimList ^ ")"
@@ -201,7 +201,7 @@ let rec strStatement s =
   match s with
   | EmptyStatement -> "emptyStatement"
   | DeclStatement (t, vList) -> "declStatement(" ^ strType t ^ ", " ^ List.fold_left strAppendVarDecl "" vList ^ ")"
-  | IfStatement (_, e, sA, sO) -> "ifStatement(" ^ strExpr e ^ ", " ^ strStatement sA ^ ", " ^
+  | IfStatement (_, _, e, sA, sO) -> "ifStatement(" ^ strExpr e ^ ", " ^ strStatement sA ^ ", " ^
     (match sO with
     | Some sB -> strStatement sB
     | None -> "")
@@ -232,12 +232,11 @@ let strMember m =
     "," ^ List.fold_left strAppendModifier "" mList ^ ", " ^
     List.fold_left strAppendFormal "" fList  ^ "," ^
     List.fold_left strAppendStatement "" sList ^ ")"
-  | Constructor (s, t, mList, fList, sList) -> "constructor(" ^ s ^ "," ^ strType t ^
+  | Constructor (t, _, mList, fList, sList) -> "constructor(" ^ strType t ^
     "," ^ List.fold_left strAppendModifier "" mList ^ ", " ^
     List.fold_left strAppendFormal "" fList  ^ "," ^
     List.fold_left strAppendStatement "" sList ^ ")"
 
+(* TODO add printing field/method tables *)
 let strClass c =
-  let strAppend a x =
-    a ^ strMember x ^ "; " in
-  "class(" ^ c.name ^ ", " ^ strSuper c.super ^ ", " ^ List.fold_left strAppend "" c.memberList ^ ")"
+  "class(" ^ strType c.t ^ ", " ^ strSuper c.super ^ ")"

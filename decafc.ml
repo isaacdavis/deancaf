@@ -2,7 +2,7 @@ open Lexing
 open Parser
 open Lexer
 open Ast
-open Desugar
+open Typechecker
 
 (*
   Given the current state of lexbuf, prints a useful parse error with line
@@ -22,13 +22,23 @@ let main () =
 
   (* Read from stdin in a loop for now *)
   let lexbuf = Lexing.from_channel stdin in
-  let tree = ref (try Parser.classList Lexer.read lexbuf with
+  let tree = (try Parser.classList Lexer.read lexbuf with
         | Lexer.SyntaxError s -> print_string(s); exit 1
         | Lexer.ForbiddenWordError s -> print_string(s); exit 1
         | Parsing.Parse_error ->
             printParseError lexbuf;
             exit 1) in
-  let strs = List.map Ast.strClass !tree in
+
+  (* TODO clean up the "this should never happen" part *)
+  let get_name c =
+    match c.t with
+      | ClassType s -> s
+      | _ -> raise (TypeError("this should never happen"))
+  in
+
+  List.iter (fun x -> class_table#put (get_name x) x) tree;
+
+  let strs = List.map Ast.strClass tree in
   List.iter print_endline strs;
   exit 0
 

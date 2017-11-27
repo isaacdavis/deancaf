@@ -4,12 +4,14 @@
 open List
 open Ast
 open Symboltable
+open Typechecker
+open Runtime
 
-let objectClass = {super = ClassType("Object")}
-
-let make_default_ctor name =
-    Constructor(ClassType(name), new symbol_table, [Public], [],
-                [SuperStatement([])])
+let get_super name =
+    match class_table#get name with
+        (* TODO move this to typechecker? *)
+        | None -> failwith ("superclass not found: " ^ name)
+        | Some c -> c
 
 let make_class name super members =
     let field_table : astMember symbol_table = new symbol_table in
@@ -24,8 +26,12 @@ let make_class name super members =
     in
 
     List.iter add_symbol members;
-    {t = ClassType(name); super = super; constructor = !ctor;
-     fieldTable = field_table; methodTable = method_table}
+
+    let c = {t = ClassType(name); super = Some super; constructor = !ctor;
+        fieldTable = field_table; methodTable = method_table} in
+    class_table#put name c;
+    c
+
 
 let make_method name t mods formals statements =
     let var_table : astType symbol_table = new symbol_table in
@@ -178,17 +184,17 @@ classList
     ;
 
 singleClass
-    : CLASS ID LBRACE RBRACE                    { make_class $2 objectClass [] }
+    : CLASS ID LBRACE RBRACE                    { make_class $2 object_class [] }
 
     | CLASS ID super LBRACE RBRACE              { make_class $2 $3 [] }
 
-    | CLASS ID LBRACE memberlist RBRACE         { make_class $2 objectClass $4 }
+    | CLASS ID LBRACE memberlist RBRACE         { make_class $2 object_class $4 }
 
     | CLASS ID super LBRACE memberlist RBRACE   { make_class $2 $3 $5 }
     ;
 
 super
-    :EXTENDS ID                                 { {super = ClassType($2)} }
+    : EXTENDS ID                                { get_super $2 }
     ;
 
 memberlist
@@ -202,7 +208,6 @@ member
     | ctor                                      { $1 }
     ;
 
-/* TODO condense field lists into one list - do this after parsing is done? List.map (fun varDecl -> Field($1, $2, varDecl)) $3  */
 field
     : modifierlist typeD varDeclList SEMICOLON  { List.map (fun d -> Field($1, $2, d)) $3 }
     | typeD varDeclList SEMICOLON               { List.map (fun d -> Field([Public], $1, d)) $2 }
@@ -257,6 +262,7 @@ formalArg
             (* TODO should a void type in a formal arg be a parse error? Or maybe offload to type checker *)
             | VoidType ->
                 {name = declName; t = ArrayType(VoidType, declCnt)}
+            (* TODO these aren't really parse errors *)
             | MethodType (_, _, _) -> raise Parsing.Parse_error
         else
             {name = declName; t = $1}
@@ -288,8 +294,8 @@ varDeclList
     ;
 
 varDecl
-    : varDeclId ASGN expr                       { {name = fst $1; count = snd $1; expr = Some $3} }
-    | varDeclId                                 { {name = fst $1; count = snd $1; expr = None} }
+    : varDeclId ASGN expr                       { {name = fst $1; dim = snd $1; expr = Some $3} }
+    | varDeclId                                 { {name = fst $1; dim = snd $1; expr = None} }
     ;
 
 varDeclId

@@ -4,11 +4,12 @@
 //JJS
 class Hi {
     
-    String j = "test, "c = "\\\"f";
+   //String j = "test, "c = "\\\"f";
 
-    private int a = 1, b = 3, c;
+    private int a = 1, b = 'v', c;
     
 }
 
+class Hello extends Object {}
 
 

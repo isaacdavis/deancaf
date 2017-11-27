@@ -18,7 +18,9 @@ let printParseError lexbuf =
 (*
   Entry point for compiler driver.
 *)
-let main () = 
+let main () =
+ 
+  Runtime.setup ();
 
   (* Read from stdin in a loop for now *)
   let lexbuf = Lexing.from_channel stdin in
@@ -29,17 +31,14 @@ let main () =
             printParseError lexbuf;
             exit 1) in
 
-  (* TODO clean up the "this should never happen" part *)
-  let get_name c =
-    match c.t with
-      | ClassType s -> s
-      | _ -> raise (TypeError("this should never happen"))
-  in
 
-  List.iter (fun x -> class_table#put (get_name x) x) tree;
+  let errs = type_check tree in
 
-  let strs = List.map Ast.strClass tree in
-  List.iter print_endline strs;
+  if List.length errs != 0 then begin
+    List.iter print_endline errs;
+    exit 1
+  end;
+
   exit 0
 
 ;;

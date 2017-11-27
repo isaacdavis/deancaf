@@ -1,12 +1,24 @@
 
+exception PreviouslyDeclaredError of string
+
 class ['a] symbol_table = object
 
   val mutable table : (string, 'a) Hashtbl.t = Hashtbl.create 0
 
   method put (k : string) (v : 'a) =
-    Hashtbl.add table k v
+    if Hashtbl.mem table k then
+      raise (PreviouslyDeclaredError(k))
+    else
+      Hashtbl.add table k v
 
-  method get (k : string) : 'a = Hashtbl.find table k
+  method get (k : string) : 'a option =
+    try
+      Some (Hashtbl.find table k)
+    with
+      | Not_found -> None
+
+  method iter f =
+    Hashtbl.iter f table
 
   method set_table t =
     table <- t
@@ -19,15 +31,29 @@ class ['a] symbol_table = object
 
 end
 
+(* TODO make not crappy - roll my own stack? *)
 class ['a] symbol_table_manager = object
 
-  val stack : 'a Stack.t = Stack.create ()
+  val stack : 'a symbol_table Stack.t = Stack.create ()
 
   method push (s : 'a symbol_table) =
     Stack.push s stack
 
-  method pop (s : 'a symbol_table) =
+  method pop =
     Stack.pop stack
+
+  method lookup name : 'a option =
+    let sl = ref [] in
+    Stack.iter (fun x -> sl := x :: !sl) stack;
+
+    let rec loop = function
+      | [] -> None
+      | h :: t ->
+        (match h#get (name) with
+          | Some v -> Some v
+          | None -> loop (t))
+    in
+    loop (!sl)
 
 end
 

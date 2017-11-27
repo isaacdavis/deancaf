@@ -49,11 +49,15 @@ type astLiteral =
   | CharLiteral of char
   | StringLiteral of string
 
-type astFormal = {name: string; t: astType}
+type astFormal =
+  { name: string
+  ; t: astType
+  }
 
-type astSuper = {super: astType}
-
-type astNewArrayExpr = {t: astType; dimList: astExpr list}
+type astNewArrayExpr =
+  { t: astType
+  ; dimList: astExpr list
+  }
 
 and astNonNewArrayExpr =
     LiteralExpr of astLiteral
@@ -77,7 +81,11 @@ and astPrimary =
   | NonNewArrayPrimary of astNonNewArrayExpr
   | IdPrimary of string
 
-type astVarDecl = {name: string; count: int; expr: astExpr option}
+type astVarDecl = 
+  { name: string
+  ; dim: int
+  ; expr: astExpr option
+  }
 
 type astStatement = 
     EmptyStatement
@@ -96,9 +104,21 @@ type astMember =
   | Method of string * astType * astType symbol_table * astModifier list * astFormal list * astStatement list
   | Constructor of astType * astType symbol_table * astModifier list * astFormal list * astStatement list
 
-type astClass = {t: astType; super: astSuper; constructor: astMember;
-                 fieldTable: astMember symbol_table;
-                 methodTable: astMember symbol_table}
+type astClass =
+  { t: astType
+  ; super: astClass option
+  ; constructor: astMember
+  ; fieldTable: astMember symbol_table
+  ; methodTable: astMember symbol_table
+  }
+
+(*
+  Util functions
+*)
+
+let make_default_ctor name =
+    Constructor(ClassType(name), new symbol_table, [Public], [],
+                [SuperStatement([])])
 
 (*
   "toString" functions for printing an AST although big ASTs are hard to read
@@ -153,9 +173,6 @@ let strLiteral = function
 let strFormal (f : astFormal) =
   "formal(" ^ f.name ^ ", " ^ strType f.t ^ ")"
 
-let strSuper (s : astSuper) =
-  "super(" ^ strType s.super ^ ")"
-
 let rec strExpr = function
   | UnOpExpr (op, e) -> "unOpExpr(" ^ strUnOp op ^ ", " ^ strExpr e ^ ")"
   | BinOpExpr (op, a, b) -> "binOpExpr(" ^ strBinOp op ^ ", " ^ strExpr a ^ ", " ^ strExpr a ^ ")"
@@ -188,8 +205,8 @@ and strPrimary = function
 
 let strVarDecl v =
   match v.expr with
-    | Some e -> "varDecl(" ^ v.name ^ ", " ^ string_of_int v.count ^ ", " ^ strExpr e ^ ")"
-    | None -> "varDecl(" ^ v.name ^ ", " ^ string_of_int v.count ^ ")"
+    | Some e -> "varDecl(" ^ v.name ^ ", " ^ string_of_int v.dim ^ ", " ^ strExpr e ^ ")"
+    | None -> "varDecl(" ^ v.name ^ ", " ^ string_of_int v.dim ^ ")"
 
 let rec strStatement s =
   let strAppend f a x =
@@ -239,4 +256,8 @@ let strMember m =
 
 (* TODO add printing field/method tables *)
 let strClass c =
-  "class(" ^ strType c.t ^ ", " ^ strSuper c.super ^ ")"
+  match c.super with
+  | None ->
+    "class(" ^ strType c.t ^ ")"
+  | Some s ->
+    "class(" ^ strType c.t ^ ", " ^ "super(" ^ strType s.t ^ "))"

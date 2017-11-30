@@ -107,7 +107,8 @@ type astMember =
 type astClass =
   { t: astType
   ; super: astClass option
-  ; constructor: astMember
+  (* Mutable to allow for adding implicit super to statement list *)
+  ; mutable constructor: astMember
   ; fieldTable: astMember symbol_table
   ; methodTable: astMember symbol_table
   }

@@ -1,11 +1,11 @@
 
 %{
 
-open List
 open Ast
+open Globals
+open Runtime
 open Symboltable
 open Typechecker
-open Runtime
 
 let get_super name =
     match class_table#get name with
@@ -17,12 +17,20 @@ let make_class name super members =
     let field_table : astMember symbol_table = new symbol_table in
     let method_table : astMember symbol_table = new symbol_table in
     let ctor = ref (make_default_ctor name) in
+    let ctor_found = ref false in
 
     let add_symbol s =
         match s with
             | Field (_, _, var_decl) -> field_table#put var_decl.name s 
             | Method (n, _, _, _, _, _) -> method_table#put n s
-            | Constructor (_, _, _, _, _) -> ctor := s
+            | Constructor (_, _, _, _, _) ->
+                if !ctor_found then
+                    err_list := ("Duplicate constructor: " ^ strMember s) ::
+                        !err_list
+                else begin
+                    ctor_found := true;
+                    ctor := s
+                end;
     in
 
     List.iter add_symbol members;
@@ -35,39 +43,42 @@ let make_class name super members =
 
 let make_method name t mods formals statements =
     let var_table : astType symbol_table = new symbol_table in
-    let add_symbol s =
+    (* let add_symbol s =
         match s with
             | DeclStatement (dt, decls) ->
                 List.iter (fun d -> var_table#put d.name dt) decls
             | _ -> ()
     in
 
-    List.iter add_symbol statements;
+    List.iter add_symbol statements;*)
+    List.iter (fun (f : astFormal) -> var_table#put f.name f.t) formals;
     Method(name, t, var_table, mods, formals, statements)
 
 let make_constructor t mods formals statements =
     let var_table : astType symbol_table = new symbol_table in
-    let add_symbol s =
+    (* let add_symbol s =
         match s with
             | DeclStatement (dt, decls) ->
                 List.iter (fun d -> var_table#put d.name dt) decls
             | _ -> ()
     in
 
-    List.iter add_symbol statements;
+    List.iter add_symbol statements;*)
+    List.iter (fun (f : astFormal) -> var_table#put f.name f.t) formals;
     Constructor(t, var_table, mods, formals, statements)
 
 let make_while e s =
-    let var_table = ref (new symbol_table) in
+    (* let var_table = ref (new symbol_table) in
     (match s with
         | DeclStatement (dt, decls) ->
             List.iter (fun d -> !var_table#put d.name dt) decls
         | BlockStatement (btable, _) -> var_table := btable#clone 
         | _ -> ());
-    WhileStatement(!var_table, e, s)
+    WhileStatement(!var_table, e, s) *)
+    WhileStatement (new symbol_table, e, s)
 
 let make_if e st sfo =
-    let true_table = ref (new symbol_table) in
+    (*let true_table = ref (new symbol_table) in
     let false_table = ref (new symbol_table) in
 
     (match st with
@@ -84,10 +95,14 @@ let make_if e st sfo =
                 | BlockStatement (btable, _) -> false_table := btable#clone 
                 | _ -> ());
              IfStatement(!true_table, Some !false_table, e, st, sfo))
-        | None -> IfStatement(!true_table, None, e, st, sfo)
+        | None -> IfStatement(!true_table, None, e, st, sfo)*)
+    match sfo with
+        | Some sf -> IfStatement(new symbol_table, Some new symbol_table, e, st,
+             sfo)
+        | None -> IfStatement(new symbol_table, None, e, st, sfo)
 
 let make_block statements =
-    let var_table : astType symbol_table = new symbol_table in
+    (*let var_table : astType symbol_table = new symbol_table in
     let add_symbol s =
         match s with
             | DeclStatement (dt, decls) ->
@@ -96,7 +111,8 @@ let make_block statements =
     in
 
     List.iter add_symbol statements;
-    BlockStatement(var_table, statements)
+    BlockStatement(var_table, statements)*)
+    BlockStatement(new symbol_table, statements)
 
 %}
 
@@ -220,10 +236,12 @@ modifierlist
 
 methodDecl
     : modifierlist typeD ID formalArgs block    { [make_method $3 $2 $1 $4 $5] }
+    | typeD ID formalArgs block    { [make_method $2 $1 [Public] $3 $4] }
     ;
 
 ctor
     : modifierlist ID formalArgs block          { [make_constructor (ClassType($2)) $1 $3 $4] }
+    | ID formalArgs block                       { [make_constructor (ClassType($1)) [Public] $2 $3]}
     ;
 
 modifier

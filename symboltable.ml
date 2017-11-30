@@ -1,5 +1,5 @@
 
-exception PreviouslyDeclaredError of string
+open Globals
 
 class ['a] symbol_table = object
 
@@ -7,7 +7,7 @@ class ['a] symbol_table = object
 
   method put (k : string) (v : 'a) =
     if Hashtbl.mem table k then
-      raise (PreviouslyDeclaredError(k))
+      err_list := ("Previously declared: " ^ k) :: !err_list
     else
       Hashtbl.add table k v
 
@@ -41,6 +41,9 @@ class ['a] symbol_table_manager = object
 
   method pop =
     Stack.pop stack
+
+  method top =
+    Stack.top stack
 
   method lookup name : 'a option =
     let sl = ref [] in

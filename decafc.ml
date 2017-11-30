@@ -5,6 +5,14 @@ open Ast
 open Typechecker
 
 (*
+  TODO add type annotations everywhere
+  TODO add comments
+  TODO enforce access violations in type-checker
+  TODO add nulltype
+  TODO enforce return types in type-checker
+*)
+
+(*
   Given the current state of lexbuf, prints a useful parse error with line
   number, column, and token.
 *)
@@ -35,7 +43,7 @@ let main () =
   let errs = type_check tree in
 
   if List.length errs != 0 then begin
-    List.iter print_endline errs;
+    List.iter print_endline (List.rev errs);
     exit 1
   end;
 

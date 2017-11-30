@@ -1,9 +1,9 @@
 
 open Ast
+open Globals
 open Symboltable
 
 let class_table : astClass symbol_table = new symbol_table
-let err_list : string list ref = ref []
 let scope_mgr : astType symbol_table_manager = new symbol_table_manager
 
 (* TODO move default ctor and object class to a common place to avoid repetition *)
@@ -64,7 +64,7 @@ let rec types_equal a b =
       with
         | Invalid_argument _ -> false)
     | _ -> false)
-  | VoidType -> failwith "types_equal called on VoidType"
+  | VoidType -> a == b
 
 let get_parent_class_name sub_name =
   match lookup_class sub_name with
@@ -133,6 +133,33 @@ let type_of_method c m =
     let formal_types = List.map (fun (f : astFormal) -> f.t) formals in
     MethodType(c.t, formal_types, ret)
 
+let check_constructor_statements c =
+  match c.constructor with
+  | Field (_, _, _) -> failwith "check constructor_statements called on field"
+  | Method (_, _, _, _, _, _) ->
+    failwith "check_constructor_statements called on method"
+  | Constructor (t, tbl, mods, formals, statements) ->
+    (* TODO clean up logic? *)
+    if List.length statements > 0 then begin
+      (match List.hd statements with
+      | SuperStatement _ -> ()
+      | _ -> c.constructor <-
+        Constructor(t, tbl, mods, formals, SuperStatement([]) :: statements));
+      let rec check_list l =
+        (match l with
+        | [] -> ()
+        | hd :: tl ->
+          (match hd with
+          | SuperStatement _ ->
+            err_list := ("Super statement can only be at beginning of constructor: "
+              ^ strMember c.constructor) :: !err_list
+          | _ -> ());
+          check_list tl)
+      in
+      check_list (List.tl statements) end
+    else
+      c.constructor <- Constructor(t, tbl, mods, formals, [SuperStatement([])])
+
 let walk_literal = function
   | NullLiteral -> ClassType("Object")
   | BoolLiteral _ -> BoolType
@@ -162,7 +189,9 @@ let rec walk_expr = function
     let t2 = walk_expr e2 in
     (match op with
     | Asgn ->
-      if is_lvalue e1 && is_subtype t2 t1 then
+      if not (is_lvalue e1) then
+        err_list := ("l-value required: " ^ strExpr e1) :: !err_list;
+      if not (is_subtype t2 t1) then
         err_list := ("Type error: " ^ strExpr e2) :: !err_list;
       t1
     | Greater | Less | Geq | Leq ->
@@ -188,7 +217,7 @@ let rec walk_expr = function
         err_list := ("Type error: " ^ strExpr e2) :: !err_list;
       BoolType)
 
-  | PrimaryExpr p -> walk_primary p
+  | PrimaryExpr p -> walk_primary p false
 
 and walk_nonnew nn =
   match nn with
@@ -200,7 +229,7 @@ and walk_nonnew nn =
     | Some c ->
       let arg_types = List.map (fun e -> walk_expr e) arglist in
       let arg_meth_type = MethodType(ClassType(s), arg_types, ClassType(s)) in
-      if not (types_equal (type_of_method c c.constructor) arg_meth_type) then
+      if not (is_subtype arg_meth_type (type_of_method c c.constructor)) then
         err_list := ("Mismatched args: " ^ strNonNewArrayExpr nn) :: !err_list;
       c.t
     | None ->
@@ -218,12 +247,12 @@ and walk_nonnew nn =
       | Method (_, ret, _, _, _, _) ->
         let arg_types = List.map (fun e -> walk_expr e) arglist in
         let arg_meth_type = MethodType(!curr_class.t, arg_types, ret) in
-        if not (types_equal (type_of_method !curr_class m) arg_meth_type) then
+        if not (is_subtype arg_meth_type (type_of_method !curr_class m)) then
           err_list := ("Mismatched args: " ^ strNonNewArrayExpr nn) :: !err_list;
         ret))
 
   | MethodCallExpr (p, s, arglist) ->
-    (match walk_primary p with
+    (match walk_primary p true with
     | ClassType n ->
       (match class_table#get n with
       | None ->
@@ -241,11 +270,11 @@ and walk_nonnew nn =
           | Method (_, ret, _, _, _, _) ->
             let arg_types = List.map (fun e -> walk_expr e) arglist in
             let arg_meth_type = MethodType(c.t, arg_types, ret) in
-            if not (types_equal (type_of_method c m) arg_meth_type) then
+            if not (is_subtype arg_meth_type (type_of_method c m)) then
               err_list := ("Mismatched args: " ^ strNonNewArrayExpr nn) :: !err_list;
             ret)))
     | _ ->
-      err_list := ("Type error: not an object:" ^ strPrimary p) :: !err_list;
+      err_list := ("Type error: not an object: " ^ strPrimary p) :: !err_list;
       ClassType("Object"))
   (* | _ -> ClassType("Object") *)
 
@@ -260,28 +289,31 @@ and walk_nonnew nn =
         (match m with
         | Field (_, _, _) -> failwith "field in method table"
         | Constructor (_, _, _, _, _) -> failwith "constructor in method table"
-        | Method (_, ret, _, _, _, _) ->
+        | Method (_, ret, _, modlist, _, _) ->
           let arg_types = List.map (fun e -> walk_expr e) arglist in
           let arg_meth_type = MethodType(!curr_class.t, arg_types, ret) in
           if not (types_equal (type_of_method !curr_class m) arg_meth_type) then
             err_list := ("Mismatched args: " ^ strNonNewArrayExpr nn) :: !err_list;
+          if List.mem Private modlist then
+            err_list := ("Private super method cannot be called from subclass: " ^
+              strNonNewArrayExpr nn) :: !err_list;
           ret))
     | None ->
       err_list := ("Super called on Object class") :: !err_list;
       ClassType("Object"))
 
   | ArrayExpr (p, e) ->
-    (match walk_primary p with
-    | ArrayType (t, _) ->
+    (match walk_primary p false with
+    | ArrayType (t, d) ->
       if  not (is_subtype (walk_expr e) IntType) then
         err_list := ("Type error: not an integer:" ^ strExpr e) :: !err_list;
-      t
+      if d == 1 then t else ArrayType(t, d - 1)
     | _ ->
       err_list := ("Type error: not an array:" ^ strPrimary p) :: !err_list;
       ClassType("Object"))
 
   | FieldExpr (p, f) ->
-    (match walk_primary p with
+    (match walk_primary p false with
     | ClassType s ->
       (match lookup_class s with
       | Some c ->
@@ -296,8 +328,12 @@ and walk_nonnew nn =
       | None ->
         err_list := ("Undefined name: " ^ s) :: !err_list;
         ClassType("Object"))
+    | ArrayType (t, d) ->
+      if String.compare f "length" == 0 then IntType else begin
+        err_list := ("Type error: not an object: " ^ strPrimary p) :: !err_list;
+        ClassType("Object") end
     | _ ->
-      err_list := ("Type error: not an object:" ^ strPrimary p) :: !err_list;
+      err_list := ("Type error: not an object: " ^ strPrimary p) :: !err_list;
       ClassType("Object"))
 
   | SuperFieldExpr f ->
@@ -315,25 +351,45 @@ and walk_nonnew nn =
       err_list := ("Super called on Object class") :: !err_list;
       ClassType("Object"))
 
-and walk_newarr n =
+and walk_newarr (n : astNewArrayExpr) =
   let check_dim d =
     let d_t = walk_expr d in
     if not (is_subtype d_t IntType) then
       err_list := ("Invalid array dimension: " ^ strExpr d) :: !err_list;
   in
+  (match n.t with
+  | ClassType _ ->
+    err_list := ("Initialized array type must be primitive: " ^
+      strNewArrayExpr n) :: !err_list
+  | _ -> ());
   List.iter check_dim n.dimList;
   ArrayType(n.t, List.length n.dimList)
 
-and walk_primary = function
+and walk_primary p from_method_call =
+  match p with
   | NewArrayPrimary n -> walk_newarr n
   | NonNewArrayPrimary n -> walk_nonnew n
   | IdPrimary s ->
-   (match scope_mgr# lookup s with
+   (match scope_mgr#lookup s with
     | Some t -> t
     | None ->
-      err_list := ("Undefined name: " ^ s) :: !err_list;
-      (* TODO what to return here? *)
-      ClassType("Object"))
+      (match lookup_field !curr_class s with
+      | Some f ->
+        (match f with
+        | Field (_, t, _) -> t
+        | _ -> failwith "lookup_field returned non-field")
+      | None ->
+        if from_method_call then
+          (match lookup_class s with
+          | Some c -> c.t
+          | None -> err_list := ("Undefined name: " ^ s) :: !err_list;
+            (* TODO what to return here? *)
+            ClassType("Object"))
+        else begin
+        err_list := ("Undefined name: " ^ s) :: !err_list;
+        (* TODO what to return here? *)
+        ClassType("Object")
+        end))
 
 let walk_vardecl v =
   match v.expr with
@@ -370,6 +426,7 @@ let check_type_exists t =
   | MethodType (_, _, _) -> failwith "MethodType found in type declaration"
   | _ -> ()
 
+(* TODO fix to support c-style array declaration syntax *)
 let check_vardecl t v =
   match walk_vardecl v with
   | Some vt ->
@@ -377,23 +434,39 @@ let check_vardecl t v =
       err_list := ("Type error: " ^ strVarDecl v) :: !err_list;
   | None -> ()
 
+let check_vardecl_field v =
+  match walk_vardecl v with
+  | Some _ ->
+    err_list := ("Field initializers illegal: " ^ strVarDecl v) :: !err_list
+  | None -> ()
+
 let walk_formal (f : astFormal) =
   check_type_exists f.t
 
-let rec walk_statement = function
+let rec walk_statement st =
+  match st with
   | EmptyStatement | ContinueStatement | BreakStatement -> ()
 
   | DeclStatement (t, vardecls) ->
     check_type_exists t;
-    List.iter (check_vardecl t) vardecls
+    List.iter (check_vardecl t) vardecls;
+    List.iter (fun d -> scope_mgr#top#put d.name t) vardecls
 
   | IfStatement (iftbl, elsetbl_o, cond, ifs, elses_o) ->
     let t = walk_expr cond in
     if not (types_equal t BoolType) then
       err_list := ("Invalid if condition: " ^ strExpr cond) :: !err_list;
+    scope_mgr#push iftbl;
     walk_statement ifs;
+    ignore(scope_mgr#pop);
     (match elses_o with
-    | Some elses -> walk_statement elses
+    | Some elses ->
+      (match elsetbl_o with
+      | None -> failwith "If statement has else branch but no else symbol table"
+      | Some elsetbl ->
+        scope_mgr#push elsetbl;
+        walk_statement elses;
+        ignore(scope_mgr#pop))
     | None -> ())
 
   | ExprStatement e -> ignore(walk_expr e)
@@ -402,35 +475,93 @@ let rec walk_statement = function
     let t = walk_expr cond in
     if not (types_equal t BoolType) then
       err_list := ("Invalid while condition: " ^ strExpr cond) :: !err_list;
+    scope_mgr#push tbl;
     walk_statement s;
+    ignore(scope_mgr#pop)
 
   | ReturnStatement e_o ->
     (match e_o with
     | Some e -> ignore(walk_expr e)
     | None -> ());
 
-  | BlockStatement (tbl, statements) -> List.iter walk_statement statements
+  | BlockStatement (tbl, statements) ->
+    scope_mgr#push tbl;
+    List.iter walk_statement statements;
+    ignore(scope_mgr#pop)
 
-  | SuperStatement (exprs) -> List.iter (fun e -> ignore(walk_expr e)) exprs
+  | SuperStatement (exprs) ->
+    (match !curr_class.super with
+    | None -> failwith "object class has super statement in constructor"
+    | Some s ->
+      let desired_t = type_of_method s s.constructor in
+      let param_ts = List.map walk_expr exprs in
+      let actual_t = MethodType(s.t, param_ts, s.t) in
+      if not (is_subtype actual_t desired_t) then
+        err_list := ("Super args do not match superclass constructor: " ^
+          "superclass: " ^ strType s.t ^
+          "; subclass: " ^ strType !curr_class.t) :: !err_list) 
 
-let walk_member = function
+let walk_member m =
+  match m with
   | Field (modlist, t, vardecl) ->
+    if List.mem Static modlist then begin
+      if List.length modlist > 2 then
+        err_list := ("Multiple access modifiers illegal: " ^ strMember m)
+          :: !err_list;
+      err_list := ("Field cannot be static: " ^ strMember m) :: !err_list
+    end
+    else if List.length modlist > 1 then
+        err_list := ("Multiple access modifiers illegal: " ^ strMember m)
+          :: !err_list;
     check_type_exists t;
-    check_vardecl t vardecl
+    check_vardecl_field vardecl
+
   | Method (name, t, tbl, modlist, formallist, statementlist) ->
+    if List.mem Static modlist then begin 
+      if List.length modlist > 2 then
+        err_list := ("Multiple access modifiers illegal: " ^ strMember m)
+          :: !err_list
+      end
+    else if List.length modlist > 1 then
+        err_list := ("Multiple access modifiers illegal: " ^ strMember m)
+          :: !err_list;
     check_type_exists t;
     List.iter walk_formal formallist;
-    List.iter walk_statement statementlist
+
+    (match !curr_class.super with
+    | None -> ()
+    | Some super ->
+      (match lookup_method super name with
+      | None -> ()
+      | Some super_method->
+
+        (match super_method with
+        | Method (_, _, _, s_modlist, _, _) ->
+          if not (List.mem Static s_modlist ||
+            types_equal
+              (type_of_method !curr_class m)
+              (type_of_method !curr_class super_method)) then
+            err_list := ("Overridden method type does not match super: " ^
+              strMember m) :: !err_list;
+        | _ -> failwith "method returned from lookup_method not a method")));
+    scope_mgr#push tbl;
+    List.iter walk_statement statementlist;
+    ignore(scope_mgr#pop)
+
   | Constructor (t, tbl, modlist, formallist, statementlist) ->
     check_type_exists t;
     List.iter walk_formal formallist;
-    List.iter walk_statement statementlist
+    scope_mgr#push tbl;
+    List.iter walk_statement statementlist;
+    ignore(scope_mgr#pop)
 
 let walk_class c =
 
   let discard_fst _ b = walk_member b in
 
   curr_class := c;
+  (* TODO jank jank jank *)
+  check_constructor_statements c;
   c.fieldTable#iter discard_fst;
   c.methodTable#iter discard_fst;
   walk_member c.constructor

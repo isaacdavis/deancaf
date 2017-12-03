@@ -24,7 +24,7 @@ class Hi {
     	this.a = 1;
     	this.b = 'c';
     	this.io = new IO();
-    	func(2);
+    	func(true);
     }
 
     static protected void func(int x) {

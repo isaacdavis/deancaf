@@ -3,14 +3,17 @@ A compiler for the Decaf programming language, written in OCaml. Wow!
 
 ## The language:
 Information about Decaf can be found [here](http://cs.brown.edu/courses/csci1260/).
+This compiler outputs a 32-bit x86 Linux executable.
+
+There's a little help from a runtime library written in C.
 
 ## Dependencies:
-Ocaml of some sort idk
+Ocaml 4.01.0 or later, including ocamlc and ocamlbuild
 
 ## To build:
-from the project's root directory, run `ocamlbuild decafc.byte`. Building to a native executable may arrive at some point.
+Run `make decafc`
 
 ## To run:
-For now, run `decafc` to parse from stdin, or `decafc < <file to be compiled>` to compile (well, parse) a decaf file.
+For now, run `./decafc < <file to be compiled>` to compile a decaf file.
 
 Rad!

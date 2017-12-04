@@ -6,6 +6,9 @@ open String
 exception ForbiddenWordError of string
 exception SyntaxError of string
 
+let string_buf = ref []
+let backslashes = ref 0
+
 let raise_forbidden_error lexbuf =
   let pos = Lexing.lexeme_start_p lexbuf in
   let lnum = string_of_int pos.pos_lnum in
@@ -36,11 +39,25 @@ let parse_char lexbuf =
     | _ -> raise_syntax_error lexbuf)
   | 3 -> get s 1
   | _ -> raise_syntax_error lexbuf
+
+let parse_char_in_string lexbuf =
+  (* TODO we shouldn't ever really hit error cases here, right? *)
+  let s = Lexing.lexeme lexbuf in
+  match length s with
+  | 2 ->
+    (match get s 0 with
+    | '\\' ->
+      (match get s 1 with
+      | 't' -> '\t'
+      | 'n' -> raise_syntax_error lexbuf
+      | c -> c)
+    | _ -> raise_syntax_error lexbuf)
+  | 1 -> get s 0
+  | _ -> raise_syntax_error lexbuf
 }
 
 let whitespace = [' ' '\t']+
 let newline = '\r' | '\n' | "\r\n"
-let comment = "/*"([^'*'] | ('*'+ [^'/']))* '*'? "*/"
 
 let lower = ['a'-'z']
 let upper = ['A'-'Z']
@@ -51,11 +68,9 @@ let id = ('_' | letter) (letter | number | '_')*
 
 let integer = '0' | (['1'-'9'] number*)
 let char = '\'' ([^'\\''\n''\''] | '\\'[^'n''t'] | "\\n" | "\\t") '\''
-(* TODO fix string regex and parse it good *)
-let string = "\"" ([^'\\''\n''\''] | '\\'[^'n''t'] | "\\n" | "\\t")* "\""
+let charinstring = [^'\\''\n'] | '\\'[^'n''t'] | "\\n" | "\\t"
 
-rule read =
-  parse
+rule read = parse
   (* Whitespace *)
   | whitespace  { read lexbuf }
   | newline     { new_line lexbuf; read lexbuf }
@@ -147,7 +162,7 @@ rule read =
   | ">>>="          { raise_forbidden_error lexbuf }
 
   | char            { CHAR(parse_char lexbuf) }
-  | string          { STRING(Lexing.lexeme lexbuf)}
+  | "\""            { string_buf := []; backslashes := 0; read_string lexbuf }
   | "true"          { BOOL(true)}
   | "false"         { BOOL(false)}
   | "null"          { NULL }
@@ -161,7 +176,7 @@ rule read =
 
   (* Comments *)
   | "//"[^'\r''\n']*  { read lexbuf }
-  | comment           { read lexbuf }
+  | "/*"              { swallow lexbuf }
 
   (* Identifier *)
   | id              { ID(Lexing.lexeme lexbuf)}
@@ -201,4 +216,20 @@ rule read =
 
   | _               { raise_syntax_error lexbuf }
   
+  and swallow = parse
+  | "*/"            { read lexbuf }
+  | newline         { new_line lexbuf; swallow lexbuf }
+  | eof             { EOF }
+  | _               { swallow lexbuf }
+
+  and read_string = parse
+  | "\""            { if (!backslashes == 0) || (!backslashes mod 2) != 0 then
+                        STRING(String.concat "" (List.rev(!string_buf)))
+                      else
+                        raise_syntax_error lexbuf
+                    }
+  | charinstring    { string_buf := (String.make 1 (parse_char_in_string lexbuf)) :: !string_buf; read_string lexbuf }
+  | '\\'            { backslashes := !backslashes + 1; read_string lexbuf }
+  | eof             { EOF }
+  | _               { read_string lexbuf }
 {}

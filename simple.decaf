@@ -1,5 +1,14 @@
+
+
 class Main {
 	public static void main(String[] args) {
 		IO.putString("Hello world!\n");
 	}
+
+	int x;
+	/*int x;*/
 }
+
+/*class Main {
+	
+}*/

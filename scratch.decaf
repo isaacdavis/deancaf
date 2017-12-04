@@ -5,26 +5,26 @@
 //HH
 //JJS
 class Hi {
-    
+    /*
+    */
    //String j = "test, "c = "\\\"f";
 
     public int a, b , c; // ueah hoi
 
     void j; 
-
     void[] arr;
 
     IO io;
 
     Hi(int x, IO y) {
-
+    	String s = "aest";
     	char[] A = new char[10];
     	char B[];
 
     	this.a = 1;
     	this.b = 'c';
     	this.io = new IO();
-    	func(true);
+    	func("h\\\"nh");
     }
 
     static protected void func(int x) {

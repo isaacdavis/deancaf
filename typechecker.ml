@@ -6,11 +6,6 @@ open Symboltable
 let class_table : astClass symbol_table = new symbol_table
 let scope_mgr : astType symbol_table_manager = new symbol_table_manager
 
-(* TODO move default ctor and object class to a common place to avoid repetition *)
-let make_default_ctor name =
-    Constructor(ClassType(name), new symbol_table, [Public], [],
-                [SuperStatement([])])
-
 let object_class = {t = ClassType("Object"); super = None;
     constructor = make_default_ctor "Object"; fieldTable = new symbol_table;
     methodTable = new symbol_table}
@@ -555,18 +550,19 @@ let walk_member m =
     List.iter walk_statement statementlist;
     ignore(scope_mgr#pop)
 
-let walk_class c =
+let walk_class n c =
 
   let discard_fst _ b = walk_member b in
 
   curr_class := c;
   (* TODO jank jank jank *)
-  check_constructor_statements c;
+  if (String.compare n "Object") != 0 then
+    check_constructor_statements c;
   c.fieldTable#iter discard_fst;
   c.methodTable#iter discard_fst;
   walk_member c.constructor
 
 
 let type_check tree = 
-  List.iter walk_class tree;
+  tree#iter (fun n c -> walk_class n c);
   !err_list

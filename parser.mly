@@ -188,15 +188,17 @@ let make_block statements =
 %nonassoc LOWER_THAN_ELSE
 %nonassoc ELSE
 
+/* Classes are added to global symbol table instead of returned explicitly */
+/* TODO this sucks - fix? */
 %start classList
-%type <Ast.astClass list> classList
+%type <unit> classList
 
 %%
 
 classList
-    : singleClass classList                     { [$1]@$2 }
-    | singleClass                               { [$1] }
-    | EOF                                       { [] }
+    : singleClass classList                     { () }
+    | singleClass                               { () }
+    | EOF                                       { () }
     ;
 
 singleClass

@@ -1,0 +1,41 @@
+Data:
+vtables
+
+Text:
+functions:
+	name(mangled)
+	code
+
+Expressions:
+	binops
+	unops
+	newarray:
+		doAlloc with type (don't support object arrays for now)
+	newobj:
+		malloc the space for it
+		call constructor -> ptr to object as extra arg
+		execute user's ctor code but also init vtables
+	this:
+		all methods have "this" arg
+	method call:
+		get object's vtable
+		look up method in vtable
+	super: treat as "this" for now
+	array access: access elt of array - account for presence of "length" in struct
+	field access: access field in object by offset
+	super field access: treat as "this" for now
+	id: map to memory location, register, etc
+
+Statements:
+	decl: alloc space and initialize to expression if necessary
+	if: generate condition and jumps and recur
+	while: generate condition and jumps and recur
+	return: put thing in eax and return
+	continue: jump to top of loop
+	break: jump to bottom of loop
+	super: call super ctor
+
+Members:
+	Field: add to class struct on heap
+	Method/constructor: add to vtable
+	Add hidden vtable ptr on heap

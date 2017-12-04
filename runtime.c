@@ -34,7 +34,7 @@ _$CreateString(char *t)
 {
 	extern void *_V$String;
 	String s = (String) malloc(sizeof(struct __String) + strlen(t));
-	s->v_table = &_V$String;
+	s->v_table = _V$String;
 	strcpy(s->contents, t);
 	return s;
 }

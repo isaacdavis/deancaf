@@ -32,15 +32,14 @@ let main () =
 
   (* Read from stdin in a loop for now *)
   let lexbuf = Lexing.from_channel stdin in
-  let tree = (try Parser.classList Lexer.read lexbuf with
+  (try Parser.classList Lexer.read lexbuf with
         | Lexer.SyntaxError s -> print_string(s); exit 1
         | Lexer.ForbiddenWordError s -> print_string(s); exit 1
         | Parsing.Parse_error ->
             printParseError lexbuf;
-            exit 1) in
+            exit 1);
 
-
-  let errs = type_check tree in
+  let errs = type_check class_table in
 
   if List.length errs != 0 then begin
     List.iter print_endline (List.rev errs);

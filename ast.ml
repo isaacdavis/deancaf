@@ -118,8 +118,7 @@ type astClass =
 *)
 
 let make_default_ctor name =
-    Constructor(ClassType(name), new symbol_table, [Public], [],
-                [SuperStatement([])])
+    Constructor(ClassType(name), new symbol_table, [Public], [], [])
 
 (*
   "toString" functions for printing an AST although big ASTs are hard to read

@@ -1,7 +1,10 @@
 open Lexing
-open Parser
-open Lexer
+
 open Ast
+open Lexer
+open Offsetgen
+open Parser
+open Runtime
 open Typechecker
 
 (*
@@ -32,12 +35,13 @@ let main () =
 
   (* Read from stdin in a loop for now *)
   let lexbuf = Lexing.from_channel stdin in
-  (try Parser.classList Lexer.read lexbuf with
+  let sorted_classes = (try Parser.classList Lexer.read lexbuf with
         | Lexer.SyntaxError s -> print_string(s); exit 1
         | Lexer.ForbiddenWordError s -> print_string(s); exit 1
         | Parsing.Parse_error ->
             printParseError lexbuf;
-            exit 1);
+            exit 1)
+  in
 
   let errs = type_check class_table in
 
@@ -45,6 +49,10 @@ let main () =
     List.iter print_endline (List.rev errs);
     exit 1
   end;
+
+  let all_sorted_classes = add_runtime_classes sorted_classes in
+
+  gen_offsets all_sorted_classes;
 
   exit 0
 

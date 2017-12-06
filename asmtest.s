@@ -8,7 +8,7 @@
 
 .data
 _V$Object:
-_V$String: .long 0x1
+_V$String: .long _$DecafMain
 
 .text
 .globl _V$String

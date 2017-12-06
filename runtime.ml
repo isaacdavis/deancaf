@@ -45,6 +45,9 @@ let io_class =
   ; methodTable = new symbol_table
   }
 
+let add_runtime_classes classlist =
+  [object_class; string_class; io_class] @ classlist
+
 let setup () =
   List.iter (fun m -> io_class.methodTable#put (fst m) (snd m)) io_methods;
 

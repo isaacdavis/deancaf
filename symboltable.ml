@@ -17,11 +17,16 @@ class ['a] symbol_table = object
     with
       | Not_found -> None
 
+  method contains (k : string) : bool =
+    Hashtbl.mem table k
+
   method iter f =
     Hashtbl.iter f table
 
   method set_table t =
     table <- t
+
+  method size = Hashtbl.length table
 
   method clone =
     let clone_table : 'a symbol_table = new symbol_table in

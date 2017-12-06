@@ -1,74 +1,21 @@
 
-/******d***/
-    /*comment	*/
+class A {
+	int inta;
+	char chara;
 
-//HH
-//JJS
-class Hi {
-    /*
-    */
-   //String j = "test, "c = "\\\"f";
+	int foo(IO c) {
 
-    public int a, b , c; // ueah hoi
-
-    void j; 
-    void[] arr;
-
-    IO io;
-
-    Hi(int x, IO y) {
-    	String s = "aest";
-    	char[] A = new char[10];
-    	char B[];
-
-    	this.a = 1;
-    	this.b = 'c';
-    	this.io = new IO();
-    	func("h\\\"nh");
-    }
-
-    static protected void func(int x) {
-    	char y = 1;
-    }
-
-	public static int fun(IO i) {
-
-    }
-
-    private void privvy() {
-
-    }    
-}
-
-class Hello extends Hi {
-	IO poop;
-
-	public Hello(IO j) {
-		super(2, new IO());
-		this.privvy();
-
-	}
-
-	private void fun(IO j) {
-		j.peek();
-
-		int k = 2;
-		int x = k + 2;
-		while (k == 5){
-			int y = k + 2;
-			y = 4;
-			x = 3;
-
-			{
-				int z = 2;
-				z = 5;
-				x = 6;
-				j.peek();
-				poop.peek();
-				IO.peek();
-			}
-		}
 	}
 }
 
+class B extends A {
+	String strb;
 
+	int foo(IO d) {
+
+	}
+
+	String bar(int f) {
+
+	}
+}

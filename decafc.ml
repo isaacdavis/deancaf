@@ -1,4 +1,5 @@
 open Lexing
+open Sys
 
 open Ast
 open Lexer
@@ -30,11 +31,19 @@ let printParseError lexbuf =
   Entry point for compiler driver.
 *)
 let main () =
+
+  if (Array.length Sys.argv) != 3 then
+  begin
+    print_endline "Usage: decafc <input file> <output file>";
+    exit 1
+  end;
  
+  let in_filename = Sys.argv.(1) in
+  let in_channel = open_in in_filename in
+
   Runtime.setup ();
 
-  (* Read from stdin in a loop for now *)
-  let lexbuf = Lexing.from_channel stdin in
+  let lexbuf = Lexing.from_channel in_channel in
   let sorted_classes = (try Parser.classList Lexer.read lexbuf with
         | Lexer.SyntaxError s -> print_string(s); exit 1
         | Lexer.ForbiddenWordError s -> print_string(s); exit 1
@@ -42,9 +51,9 @@ let main () =
             printParseError lexbuf;
             exit 1)
   in
+  close_in in_channel;
 
   let errs = type_check class_table in
-
   if List.length errs != 0 then begin
     List.iter print_endline (List.rev errs);
     exit 1
@@ -54,6 +63,9 @@ let main () =
 
   gen_offsets all_sorted_classes;
 
+  let out_filename = Sys.argv.(2) in
+  let out_channel = open_out out_filename in
+  close_out out_channel;
   exit 0
 
 ;;

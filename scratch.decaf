@@ -4,18 +4,23 @@ class A {
 	char chara;
 
 	int foo(IO c) {
-
 	}
+
 }
 
 class B extends A {
 	String strb;
 
 	int foo(IO d) {
-
+		int t = 2;
+		int j = 4;
 	}
 
 	String bar(int f) {
+
+	}
+
+	public static void main(String[] args) {
 
 	}
 }

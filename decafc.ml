@@ -2,6 +2,7 @@ open Lexing
 open Sys
 
 open Ast
+open Codegen
 open Lexer
 open Offsetgen
 open Parser
@@ -14,6 +15,11 @@ open Typechecker
   TODO enforce access violations in type-checker
   TODO add nulltype
   TODO enforce return types in type-checker
+  TODO enforce presence of 1 public static void main in type-checker
+  TODO make variable name styling consistent
+  TODO make sure it's safe to modify an argument to a function within the function
+  TODO transfer modules to signatures/mli files
+  TODO add support for c-style array syntax (i.e. int arr[] instead of int[] arr)
 *)
 
 (*
@@ -64,8 +70,11 @@ let main () =
   gen_offsets all_sorted_classes;
 
   let out_filename = Sys.argv.(2) in
-  let out_channel = open_out out_filename in
-  close_out out_channel;
+  let asm_channel = open_out (out_filename ^ ".s") in
+
+  gen_code class_table asm_channel;
+
+  close_out asm_channel;
   exit 0
 
 ;;

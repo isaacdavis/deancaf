@@ -5,13 +5,16 @@ class ['a] symbol_table = object
 
   val mutable table : (string, 'a) Hashtbl.t = Hashtbl.create 0
 
+  (* TODO the fail-on-repeated-put behavior is janky outside the context of the typechecker *)
   method put (k : string) (v : 'a) =
     if Hashtbl.mem table k then
-      err_list := ("Previously declared: " ^ k) :: !err_list
+      type_err_list := ("Previously declared: " ^ k) :: !type_err_list
     else
       Hashtbl.add table k v
 
-  method get (k : string) : 'a option =
+  method get (k : string) : 'a = Hashtbl.find table k
+
+  method get_opt (k : string) : 'a option =
     try
       Some (Hashtbl.find table k)
     with
@@ -57,7 +60,7 @@ class ['a] symbol_table_manager = object
     let rec loop = function
       | [] -> None
       | h :: t ->
-        (match h#get (name) with
+        (match h#get_opt (name) with
           | Some v -> Some v
           | None -> loop (t))
     in

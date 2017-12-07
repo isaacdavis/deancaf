@@ -3,6 +3,11 @@ open Ast
 open Symboltable
 open Typechecker
 
+let is_runtime_class s =
+  (String.compare s "Object" == 0) ||
+  (String.compare s "String" == 0) ||
+  (String.compare s "IO" == 0)
+
 let object_class =
   { t = ClassType("Object")
   ; super = None

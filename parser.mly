@@ -8,10 +8,8 @@ open Symboltable
 open Typechecker
 
 let get_super name =
-    match class_table#get name with
-        (* TODO move this to typechecker? *)
-        | None -> failwith ("superclass not found: " ^ name)
-        | Some c -> c
+    (* TODO move this to typechecker? *)
+    class_table#get name
 
 let make_class name super members =
     let field_table : astMember symbol_table = new symbol_table in
@@ -25,8 +23,8 @@ let make_class name super members =
             | Method (n, _, _, _, _, _) -> method_table#put n s
             | Constructor (_, _, _, _, _) ->
                 if !ctor_found then
-                    err_list := ("Duplicate constructor: " ^ strMember s) ::
-                        !err_list
+                    type_err_list := ("Duplicate constructor: " ^ strMember s) ::
+                        !type_err_list
                 else begin
                     ctor_found := true;
                     ctor := s

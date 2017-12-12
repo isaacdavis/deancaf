@@ -30,10 +30,9 @@ open Typechecker
   TODO implement different data sizes instead of just 4 bytes for everything
   TODO can there be a static and non-static method with the same name in the
     same class?
-  TODO make asm printing of DecafMain less blatantly shitty
+  TODO make asm printing of DecafMain less bad
   TODO support local field accesses without "this" in front of them, or bar
     these accesses entirely - at any rate, don't crash
-  TODO enforce 80-char limit
 
   Tuesday:
 

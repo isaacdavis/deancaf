@@ -1,0 +1,17 @@
+
+class Math {
+	
+	public static void main(String[] args) {
+		int a = 1 - 2 + 3 + 6;
+		IO.putInt(a);
+		IO.putChar('\n');
+
+		int b = 1 - (2 + 3) + 6;
+		IO.putInt(b);
+		IO.putChar('\n');
+
+		int c = -a;
+		IO.putInt(c);
+		IO.putChar('\n');
+	}
+}

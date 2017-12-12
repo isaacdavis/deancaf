@@ -19,3 +19,9 @@ Run `make decafc`
 
 `./decafc <file to be compiled> <output file>` compiles a decaf file and outputs
 assembly in `<output file.s>` and a binary in `<output file>`
+
+## Functionality:
+
+The tests in the `simple_tests` directory provide examples of what the compiler
+supports in its current state. 
+

@@ -88,6 +88,10 @@ String
 IO$getLine()
 {
 	char buf[10240];
+	int c;
+	// Flush stdin TODO should I be doing this? Good for interactive use cases
+	// but maybe not for other things
+	while ((c = getchar()) != '\n' && c != EOF);
 	fgets(buf,10240,stdin);
 
 	return _$CreateString(buf);

@@ -1,0 +1,35 @@
+
+
+class Parent {
+	
+	public Parent() {
+		IO.putString("Parent constructed\n");
+	}
+
+	public int dynamicMethod(String s) {
+		IO.putString(s);
+		return 1;
+	}
+
+	public static int staticMethod(String s) {
+		IO.putString(s);
+		return 2;
+	}
+}
+
+class Driver {
+	
+	public static void main(String[] args) {
+		Parent p1 = new Parent();
+
+		int a = p1.dynamicMethod("dynamicMethod called\n");
+		IO.putInt(a);
+
+		IO.putChar('\n');
+		
+		int b = Parent.staticMethod("staticMethod called\n");
+		IO.putInt(b);
+
+		IO.putChar('\n');
+	}
+}

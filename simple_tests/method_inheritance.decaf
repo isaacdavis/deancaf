@@ -1,0 +1,75 @@
+
+class Parent {
+	
+	public Parent() {
+		IO.putString("Parent constructed\n");
+	}
+
+	public void a() {
+		IO.putString("a called in Parent\n");
+	}
+
+
+	public void b() {
+		IO.putString("b called in Parent\n");
+	}
+
+	public void parentOnly() {
+		IO.putString("parentOnly called\n");
+	}
+}
+
+
+class Child_1 extends Parent {
+	
+	public Child_1() {
+		IO.putString("Child_1 constructed\n");
+	}
+
+	public void a() {
+		IO.putString("a called in Child_1\n");
+	}
+
+
+	public void b() {
+		IO.putString("b called in Child_1\n");
+	}
+}
+
+class Child_2 extends Parent {
+	
+	public Child_2() {
+		IO.putString("Child_2 constructed\n");
+	}
+
+	public void a() {
+		IO.putString("a called in Child_2\n");
+	}
+
+
+	public void b() {
+		IO.putString("b called in Child_2\n");
+	}
+}
+
+class Driver {
+	
+	public static void main(String[] args) {
+		Parent p1 = new Parent();
+		p1.a();
+		p1.b();
+		p1.parentOnly();
+		IO.putChar('\n');
+		
+		Parent p2 = new Child_1();
+		p2.a();
+		p2.b();
+		p2.parentOnly();
+		IO.putChar('\n');
+
+		Parent p3 = new Child_2();
+		p3.a();
+		p3.b();
+		p3.parentOnly();
+	}
+}

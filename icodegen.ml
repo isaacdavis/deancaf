@@ -300,11 +300,12 @@ let walk_member cr cname member =
     end
 
   | Method (mname, _, tbl, mods, formals, _) ->
-    if not (List.mem Static mods) &&
-      not (cr.method_offset_table#contains mname) then
-    begin
-      cr.method_offset_table#put mname !curr_method_offset;
-      curr_method_offset := !curr_method_offset + data_sz
+    if not (List.mem Static mods) then begin
+      cr.method_inherited_table#put mname cr.name;
+      if not (cr.method_offset_table#contains mname) then begin
+        cr.method_offset_table#put mname !curr_method_offset;
+        curr_method_offset := !curr_method_offset + data_sz
+      end;
     end;
 
     let mangled_name = mangle_name cname mname false in
@@ -372,14 +373,16 @@ let add_super_members c =
   match c.super with
   | None -> ()
   | Some super ->
-    let add_to_tbl tbl name offset =
-      tbl#put name offset
+    let add_to_field_tbl name offset =
+      c.field_offset_table#put name offset
     in
-    let add_to_field_table = add_to_tbl c.field_offset_table in
-    let add_to_method_table = add_to_tbl c.method_offset_table in
+    let add_to_method_tbls name offset =
+      c.method_offset_table#put name offset;
+      c.method_inherited_table#put name (super.method_inherited_table#get name)
+    in
 
-    super.field_offset_table#iter add_to_field_table;
-    super.method_offset_table#iter add_to_method_table;
+    super.field_offset_table#iter add_to_field_tbl;
+    super.method_offset_table#iter add_to_method_tbls;
     curr_field_offset := super.size;
     curr_method_offset := super.method_offset_table#size * data_sz
 
@@ -401,6 +404,7 @@ let walk_class_offsets c =
       ; size = 0
       ; field_offset_table = new symbol_table
       ; method_offset_table = new symbol_table
+      ; method_inherited_table = new symbol_table
       } in
     let walk_member_iter n b = walk_member cr name b in
     add_super_members cr;

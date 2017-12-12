@@ -202,16 +202,18 @@ let write_icNewObjStatement dest (cr : icClassRecord) args =
     out_call (VerbatimVal("malloc"));
 
     let vtable_offset = str_simple_offset (data_sz * 2) Eax in
-    out_binExpr Move (VerbatimVal(vt_name)) ebx;
+    out_binExpr Lea (VerbatimVal(vt_name)) ebx;
     out_binExpr Move ebx (VerbatimVal(vtable_offset));
     
     out_binExpr Move eax dest;
     List.iter out_push (List.rev args);
     out_push dest;
-    out_call (VerbatimVal(ctor_name))
+    out_call (VerbatimVal(ctor_name));
+    out_binExpr Move eax dest
   end
 
 let write_icMethodCallStatement dest callee offset args =
+  let eax = RegisterVal(Eax) in
   let ebx = RegisterVal(Ebx) in
   let ecx = RegisterVal(Ecx) in
 
@@ -219,10 +221,11 @@ let write_icMethodCallStatement dest callee offset args =
   let vtable_offset = str_simple_offset (data_sz * 2) Ebx in
   out_binExpr Move (VerbatimVal(vtable_offset)) ecx;
 
-  out_binExpr Add (LiteralVal(IntLiteral(offset))) ecx;
+  let vtable_entry = str_simple_offset offset Ecx in
   List.iter out_push (List.rev args);
   out_push callee;
-  out_call_indirect ecx
+  out_call_indirect (VerbatimVal(vtable_entry));
+  out_binExpr Move eax dest
 
 let walk_statement mr statement =
   match statement with
@@ -285,7 +288,7 @@ let write_data_section n c =
   method_list := List.sort compare !method_list;
   let print_method_name s =
     out_str ".long ";
-    out_str (mangle_name cr.name s false);
+    out_str (mangle_name (cr.method_inherited_table#get s) s false);
     output_newlines 1
   in
 
@@ -333,7 +336,7 @@ let write_text_section n c =
 (* Writes string literals *)
 let print_string_literals () =
   let print_string_literal k v =
-    out_str (k ^ ": .ascii \"" ^ v ^ "\"");
+    out_str (k ^ ": .ascii \"" ^ v ^ "\\0\"");
     output_newlines 1
   in
   string_literal_table#iter print_string_literal;

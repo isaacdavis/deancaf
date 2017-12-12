@@ -38,6 +38,8 @@ type icClassRecord =
   ; mutable size: int
   ; field_offset_table: int symbol_table
   ; method_offset_table: int symbol_table
+  (* Holds which classes actually declare inherited methods *)
+  ; method_inherited_table: string symbol_table
   }
 
 type icBinOp =

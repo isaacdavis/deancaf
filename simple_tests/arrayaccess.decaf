@@ -1,0 +1,8 @@
+
+class ArgPrinter {
+	
+	public static void main(String[] args) {
+		IO.putString(args[0]);
+		IO.putChar('\n');
+	}
+}

@@ -1,0 +1,15 @@
+
+class Assignment {
+	
+	public static void main(String[] args) {
+		int a = 1;
+		int b = a;
+		a = 2;
+
+		IO.putInt(a);
+		IO.putChar('\n');
+
+		IO.putInt(b);
+		IO.putChar('\n');
+	}
+}

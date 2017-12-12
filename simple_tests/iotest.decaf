@@ -1,0 +1,38 @@
+
+class IOTest {
+	
+	public static void main (String[] args) {
+
+		IO.putString("Enter a character:\n");
+		char c = IO.getChar();
+
+		IO.putString("Putting character:\n");
+		IO.putChar(c);
+
+		IO.putString("\nEnter an integer:\n");
+		int i = IO.getInt();
+
+		IO.putString("Putting integer:\n");
+		IO.putInt(i);
+
+		IO.putString("\nEnter a line of text:\n");
+		String s = IO.getLine();
+
+		IO.putString("Putting string:\n");
+		IO.putString(s);
+
+		// TODO doesn't work properly, but this is an issue in runtime.c, not
+		// the compiler itself.
+		/*
+		IO.putString("Enter a line of text again\n");
+		s = IO.getLine();
+
+		IO.putString("Peeking at first character\n");
+		c = IO.peek();
+		IO.putChar(c);
+
+		IO.putString("Putting string:\n");
+		IO.putString(s);
+		*/
+	}
+}

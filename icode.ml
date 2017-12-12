@@ -2,10 +2,12 @@
 open Ast
 open Symboltable
 
-let int_sz = 4
+(* let int_sz = 4
 let ptr_sz = 4
 let char_sz = 1
-let bool_sz = 1
+let bool_sz = 1 *)
+
+let data_sz = 4
 
 let main_method_name = "_$DecafMain"
 
@@ -54,6 +56,7 @@ type icBinOp =
   | And
   | Or
   | Mod
+  | Xor
 
 type icUnOp =
     Pos
@@ -66,36 +69,30 @@ type icLiteral =
   | BoolLiteral of bool
   | NullLiteral
 
-type icVal =
-    LiteralVal of icLiteral
-  | TemporaryVal of icTemporary
-
-and icTemporary =
-  { name: string
-  ; v: icVal
-  ; reg: icRegister
-  }
+type icLoc =
+  | LiteralVal of icLiteral
+  | LocalVal of int (* offset, NOT id*)
+  | IdVal of string
+  (* TODO verbatimval isn't necessary if you make all IdVals
+  intended to be verbatim by turning ids into offsets before code generation *)
+  | VerbatimVal of string
+  | RegisterVal of icRegister
 
 type icStatement =
-    Cond of icCond * icVal * icVal
-  | BinStatement of icBinOp * icVal * icVal
-  | UnStatement of icUnOp * icVal * icVal
-  | ArrayStatement of icVal * astType * int
-  | NewArrayStatement of astType * int * int
-  | NewObjStatement of classRecord
-  | MethodCallStatement of icVal * classRecord * string
-  | FieldAccessStatement of icVal * classRecord * string
-  | IfStatement of icVal * icStatement list
-  | WhileStatement of icVal * icStatement list
-  | ReturnStatment of icVal option
-  | ContinueStatment
-  | BreakStatment
-
-(* type icBlock =
-  { statements: icStatement list
-  ; next: icBlock option
-  }
-*)
+  | BinStatement of icBinOp * icLoc * icLoc
+  | UnStatement of icUnOp * icLoc
+  | ArrayStatement of icLoc * icLoc * icLoc
+  | NewArrayStatement of icLoc * astType * icLoc list
+  | NewObjStatement of icLoc * classRecord  * icLoc list
+  | MethodCallStatement of icLoc * icLoc * int * icLoc list
+  | StaticMethodCallStatement of icLoc * icLoc * icLoc list
+  | FieldAccessStatement of icLoc * icLoc * int
+  | IfStatement of int symbol_table * icLoc * icStatement list * icStatement list
+  | WhileStatement of int symbol_table * icLoc * icStatement list
+  | ReturnStatement of icLoc option
+  | ContinueStatement
+  | BreakStatement
+  | SuperStatement of icLoc list
 
 type icMethod =
   { name: string
@@ -103,5 +100,5 @@ type icMethod =
   ; mutable size: int
   ; local_offset_table: int symbol_table
   ; mutable statements: icStatement list
+  ; static: bool
   }
-  

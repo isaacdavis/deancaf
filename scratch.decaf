@@ -10,17 +10,21 @@ class A {
 
 class B extends A {
 	String strb;
+	int i;
 
 	int foo(IO d) {
-		int t = 2;
-		int j = 4;
+		boolean b = true;
+		b = !false;
+		b = !true;
 	}
 
-	String bar(int f) {
-
+	void bar(int f) {
+		int x = 1 + 2 + 3;
+		x = -1;
 	}
 
 	public static void main(String[] args) {
-
+		IO.putChar('p');
+		IO.putChar('\n');
 	}
 }

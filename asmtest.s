@@ -21,5 +21,7 @@ _$DecafMain:
 	push (%eax)
 	call IO$putString
 	mov $0, %eax
+	add $5, (%eax)
+	xor $1, 2(%eax)
 	leave
 	ret

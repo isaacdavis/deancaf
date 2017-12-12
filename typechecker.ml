@@ -390,7 +390,7 @@ and walk_primary p from_method_call =
   | NewArrayPrimary n -> walk_newarr n
   | NonNewArrayPrimary n -> walk_nonnew n
   | IdPrimary s ->
-   (match scope_mgr#lookup s with
+   (match scope_mgr#lookup_opt s with
     | Some t -> t
     | None ->
       (match lookup_field !curr_class s with

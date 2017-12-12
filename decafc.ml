@@ -20,6 +20,12 @@ open Typechecker
   TODO make sure it's safe to modify an argument to a function within the function
   TODO transfer modules to signatures/mli files
   TODO add support for c-style array syntax (i.e. int arr[] instead of int[] arr)
+  TODO check constructor modifiers in type-checker
+  TODO make sure continue and break are only in loops in type-checker
+  TODO implement different data sizes instead of just 4 bytes for everything
+  TODO can there be a static and non-static method with the same name in the same class?
+  TODO make asm printing of DecafMain less blatantly shitty
+  TODO support local field accesses without "this" in front of them, or bar these accesses entirely - at any rate, don't crash
 *)
 
 (*
@@ -70,13 +76,15 @@ let main () =
   gen_offsets all_sorted_classes;
 
   let out_filename = Sys.argv.(2) in
-  let asm_channel = open_out (out_filename ^ ".s") in
+  let asm_filename = out_filename ^ ".s" in
+  let asm_channel = open_out asm_filename in
 
   gen_code class_table asm_channel;
 
   close_out asm_channel;
-  exit 0
 
+  exit (Sys.command ("gcc -m32 -o " ^ out_filename ^ " " ^ asm_filename ^ " " ^
+    "runtime.c"));
 ;;
 
 (* Wheeeeeeee gogogo! *)

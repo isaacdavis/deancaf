@@ -175,7 +175,7 @@ let strFormal (f : astFormal) =
 
 let rec strExpr = function
   | UnOpExpr (op, e) -> "unOpExpr(" ^ strUnOp op ^ ", " ^ strExpr e ^ ")"
-  | BinOpExpr (op, a, b) -> "binOpExpr(" ^ strBinOp op ^ ", " ^ strExpr a ^ ", " ^ strExpr a ^ ")"
+  | BinOpExpr (op, a, b) -> "binOpExpr(" ^ strBinOp op ^ ", " ^ strExpr a ^ ", " ^ strExpr b ^ ")"
   | PrimaryExpr p -> "primaryExpr(" ^ strPrimary p ^ ")"
 
 and strNewArrayExpr (n : astNewArrayExpr) =

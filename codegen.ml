@@ -20,7 +20,7 @@ let default_epilogue = "mov $0, %eax\nleave\nret\n"
 let out_channel = ref stdout
 
 (* output primitives *)
-let output_newlines n = for _ = 1 to n do output !out_channel "\n" 0 1 done
+let output_newlines n = for i = 1 to n do output !out_channel "\n" 0 1 done
 let out_str s = output !out_channel s 0 (String.length s)
 
 let str_icLiteral = function

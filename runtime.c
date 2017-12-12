@@ -52,7 +52,7 @@ IO$putChar (char c)
 void
 IO$putInt (int v)
 {
-	printf("%x", v);
+	printf("%d", v);
 }
 
 void
@@ -158,11 +158,11 @@ int
 main(int argc,char ** argv)
 {
 	int i;
-	ARRAY a = _$ArrayAllocate(3,1,argc-1);
+	ARRAY a = _$ArrayAllocate(3,1,argc);
 	String *sp = (String *) (&a->data);
 
-	for (i = 1; i < argc; ++i) {
-		sp[i-1] = _$CreateString(argv[i]);
+	for (i = 0; i < argc; ++i) {
+		sp[i] = _$CreateString(argv[i]);
 	}
 	_$DecafMain(a);
 	return 0;

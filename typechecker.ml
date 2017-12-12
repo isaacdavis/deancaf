@@ -109,9 +109,9 @@ let rec is_subtype sub super =
 let rec is_lvalue = function
   | PrimaryExpr p ->
     (match p with
-    | NewArrayPrimary _ -> false
-    | IdPrimary _ -> true
-    | NonNewArrayPrimary n ->
+    | NewArrayPrimary (_, _) -> false
+    | IdPrimary (_, _) -> true
+    | NonNewArrayPrimary (_, n) ->
       (match n with
       | ParenExpr e -> is_lvalue e
       | ArrayExpr (_, _) -> true
@@ -387,21 +387,33 @@ and walk_newarr (n : astNewArrayExpr) =
 
 and walk_primary p from_method_call =
   match p with
-  | NewArrayPrimary n -> walk_newarr n
-  | NonNewArrayPrimary n -> walk_nonnew n
-  | IdPrimary s ->
+  | NewArrayPrimary (tb, n) ->
+    let t = walk_newarr n in
+    tb.t <- t;
+    t
+  | NonNewArrayPrimary (tb, n) ->
+    let t = walk_nonnew n in
+    tb.t <- t;
+    t
+  | IdPrimary (tb, s) ->
    (match scope_mgr#lookup_opt s with
-    | Some t -> t
+    | Some t ->
+      tb.t <- t;
+      t
     | None ->
       (match lookup_field !curr_class s with
       | Some f ->
         (match f with
-        | Field (_, t, _) -> t
+        | Field (_, t, _) ->
+          tb.t <- t;
+          t
         | _ -> failwith "lookup_field returned non-field")
       | None ->
         if from_method_call then
           (match lookup_class s with
-          | Some c -> c.t
+          | Some c ->
+            tb.t <- c.t;
+            c.t
           | None -> type_err_list := ("Undefined name: " ^ s) :: !type_err_list;
             (* TODO what to return here? *)
             ClassType("Object"))

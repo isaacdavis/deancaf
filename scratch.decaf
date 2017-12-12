@@ -6,6 +6,8 @@ class A {
 	int foo(IO c) {
 	}
 
+
+
 }
 
 class B extends A {
@@ -13,18 +15,48 @@ class B extends A {
 	int i;
 
 	int foo(IO d) {
-		boolean b = true;
-		b = !false;
-		b = !true;
 	}
 
 	void bar(int f) {
-		int x = 1 + 2 + 3;
-		x = -1;
 	}
 
 	public static void main(String[] args) {
-		IO.putChar('p');
-		IO.putChar('\n');
+		//IO.putString(args[1]);
+		//IO.putInt(5+5-10-2);
+		//IO.putChar('\n');
+		IO.putString("Hello, world!\n");
+
+		//int[] arr = new int[10];
+		//C.staticmethod();
+		//C c = new D(5);
+		//c.dynamicmethod();
+		//arr[0] = 2;
+		//IO.putInt(arr[0]);
+	}
+}
+
+class C {
+	
+	public C(int i) {
+		//IO.putInt(i);
+	}
+
+	static void staticmethod() {
+		IO.putChar('s');
+	}
+
+	void dynamicmethod() {
+		IO.putChar('1');
+	}
+}
+
+class D extends C {
+
+	public D (int i) {
+		super(i);
+	}
+
+	void dynamicmethod() {
+		IO.putChar('2');
 	}
 }

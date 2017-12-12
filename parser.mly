@@ -112,6 +112,7 @@ let make_block statements =
     BlockStatement(var_table, statements)*)
     BlockStatement(new symbol_table, statements)
 
+let make_default_typebox () : astTypeBox = {t = ClassType("Object")}
 %}
 
 %token BREAK
@@ -368,9 +369,9 @@ expr
     ;
 
 primary
-    : newArrayExpr                              { NewArrayPrimary($1) }
-    | nonNewArrayExpr                           { NonNewArrayPrimary($1) }
-    | ID                                        { IdPrimary($1) }
+    : newArrayExpr                              { NewArrayPrimary(make_default_typebox (), $1) }
+    | nonNewArrayExpr                           { NonNewArrayPrimary(make_default_typebox (), $1) }
+    | ID                                        { IdPrimary(make_default_typebox (), $1) }
     ;
 
 newArrayExpr
@@ -405,8 +406,8 @@ fieldExpr
     ;
 
 arrayExpr
-    : ID dimension                              { ArrayExpr(IdPrimary($1), $2) }
-    | nonNewArrayExpr dimension                 { ArrayExpr(NonNewArrayPrimary($1), $2) }
+    : ID dimension                              { ArrayExpr(IdPrimary(make_default_typebox (), $1), $2) }
+    | nonNewArrayExpr dimension                 { ArrayExpr(NonNewArrayPrimary(make_default_typebox (), $1), $2) }
     ;
 
 literal

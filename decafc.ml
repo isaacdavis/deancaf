@@ -83,7 +83,7 @@ let main () =
 
   close_out asm_channel;
 
-  exit (Sys.command ("gcc -m32 -o " ^ out_filename ^ " " ^ asm_filename ^ " " ^
+  exit (Sys.command ("gcc -m32 -g -o " ^ out_filename ^ " " ^ asm_filename ^ " " ^
     "runtime.c"));
 ;;
 

@@ -57,6 +57,7 @@ type icBinOp =
   | Or
   | Mod
   | Xor
+  | Lea
 
 type icUnOp =
     Pos
@@ -77,6 +78,8 @@ type icLoc =
   intended to be verbatim by turning ids into offsets before code generation *)
   | VerbatimVal of string
   | RegisterVal of icRegister
+  (* | ArrayLocationVal of icLoc * astType * icLoc *)
+  (* | FieldLocationVal of icLoc * int *)
 
 type icStatement =
   | BinStatement of icBinOp * icLoc * icLoc

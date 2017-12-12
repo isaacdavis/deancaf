@@ -54,6 +54,12 @@ type astFormal =
   ; t: astType
   }
 
+(* TODO this is an incredibly dirty hack to allow the decoration of primaries
+   with their types during type-checking. *)
+type astTypeBox =
+  { mutable t: astType
+  } 
+
 type astNewArrayExpr =
   { t: astType
   ; dimList: astExpr list
@@ -77,9 +83,9 @@ and astExpr =
   | PrimaryExpr of astPrimary
 
 and astPrimary =
-    NewArrayPrimary of astNewArrayExpr
-  | NonNewArrayPrimary of astNonNewArrayExpr
-  | IdPrimary of string
+    NewArrayPrimary of astTypeBox * astNewArrayExpr
+  | NonNewArrayPrimary of astTypeBox * astNonNewArrayExpr
+  | IdPrimary of astTypeBox * string
 
 type astVarDecl = 
   { name: string
@@ -199,9 +205,9 @@ and strNonNewArrayExpr n =
   | SuperFieldExpr s -> "superFieldExpr(" ^ s ^ ")"
 
 and strPrimary = function
-  | NewArrayPrimary n -> "newArrayPrimary(" ^ strNewArrayExpr n ^ ")"
-  | NonNewArrayPrimary n -> "nonNewArrayPrimary(" ^ strNonNewArrayExpr n ^ ")"
-  | IdPrimary s -> "idPrimary(" ^ s ^ ")"
+  | NewArrayPrimary (_, n) -> "newArrayPrimary(" ^ strNewArrayExpr n ^ ")"
+  | NonNewArrayPrimary (_, n) -> "nonNewArrayPrimary(" ^ strNonNewArrayExpr n ^ ")"
+  | IdPrimary (_, s) -> "idPrimary(" ^ s ^ ")"
 
 let strVarDecl v =
   match v.expr with

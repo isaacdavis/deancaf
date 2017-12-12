@@ -23,10 +23,10 @@ let curr_param_offset = ref (2 * data_sz)
 
 let string_id = ref 0
 let alloc_string s =
-  let name = "_$s" ^ (string_of_int !string_id) in
+  let name = "_S$" ^ (string_of_int !string_id) in
   string_literal_table#put name s;
   string_id := !string_id + 1;
-  IdVal(name)
+  VerbatimVal(name)
 
 let alloc_local_space () =
   let off = !curr_local_offset in
@@ -149,7 +149,7 @@ and walk_nonnew m container nn =
     let cont = get_container container in
     let arg_locs = List.map (walk_expr m None) args in
 
-    let cr = match Typechecker.walk_primary calleeprimary true with
+    let cr = match get_primary_type calleeprimary with
       | ClassType s -> class_record_table#get s
       | _ -> failwith "class does not have classtype"
     in
@@ -181,8 +181,8 @@ and walk_nonnew m container nn =
 
   | ArrayExpr (primary, indexexpr) ->
     let cont = get_container container in
-    let arr = walk_primary m None primary in
     let ind = walk_expr m None indexexpr in
+    let arr = walk_primary m None primary in
     m.statements <-
       ArrayStatement(cont, arr, ind) :: m.statements;
     cont
@@ -191,7 +191,7 @@ and walk_nonnew m container nn =
     let cont = get_container container in
     let callee = walk_primary m None primary in
 
-    let cr = match Typechecker.walk_primary primary true with
+    let cr = match get_primary_type primary with
       | ClassType s -> class_record_table#get s
       | _ -> failwith "class does not have classtype"
     in
@@ -214,9 +214,14 @@ and walk_nonnew m container nn =
 
 and walk_primary m container p =
   match p with
-  | NewArrayPrimary newarr -> walk_newarr m container newarr
-  | NonNewArrayPrimary nonnew -> walk_nonnew m container nonnew
-  | IdPrimary id -> LocalVal(offset_mgr#lookup id)
+  | NewArrayPrimary (_, newarr) -> walk_newarr m container newarr
+  | NonNewArrayPrimary (_, nonnew) -> walk_nonnew m container nonnew
+  | IdPrimary (_, id) -> LocalVal(offset_mgr#lookup id)
+
+and get_primary_type = function
+  | NewArrayPrimary (tb, _) -> tb.t
+  | NonNewArrayPrimary (tb, _) -> tb.t
+  | IdPrimary (tb, _) -> tb.t
 
 (* TODO handle offsets with temporaries *)
 and walk_expr m container e =
@@ -323,7 +328,7 @@ let walk_member cr cname member =
       cr.field_offset_table#put decl.name !curr_field_offset;
       curr_field_offset := !curr_field_offset + data_sz
     end
-  | Method (mname, _, tbl, mods, formals, statements) ->
+  | Method (mname, _, tbl, mods, formals, _) ->
     if not (List.mem Static mods) &&
       not (cr.method_offset_table#contains mname) then
     begin
@@ -361,7 +366,7 @@ let walk_member cr cname member =
     m.size <- -(!min_local_offset);
     method_frame_table#put mangled_name m
 
-  | Constructor (_, tbl, _, formals, statements) ->
+  | Constructor (_, tbl, _, formals, _) ->
     let mangled_name = mangle_name cname "" true in
     let m =
       { name = mangled_name
@@ -430,7 +435,8 @@ let walk_class_offsets c =
     c.fieldTable#iter walk_member_iter;
     c.methodTable#iter walk_member_iter;
     walk_member cr name c.constructor;
-    cr.size <- !curr_field_offset + data_sz; (* space for vtable ptr as well *)
+    (* space for vtable and super ptr as well *)
+    cr.size <- !curr_field_offset + (2 * data_sz);
     class_record_table#put name cr
 
   | _ -> failwith "class does not have ClassType"
@@ -463,6 +469,7 @@ let gen_offsets classlist =
       offset_mgr#push mr.local_offset_table;
       List.iter (walk_statement mr) statements;
       ignore(offset_mgr#pop);
+      mr.statements <- ReturnStatement(Some (IdVal("this"))) :: mr.statements;
       mr.statements <- List.rev mr.statements;
       (* Because offset starts at data_sz *)
       mr.size <- -(!min_local_offset) - data_sz

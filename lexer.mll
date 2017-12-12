@@ -228,6 +228,13 @@ rule read = parse
                       else
                         raise_syntax_error lexbuf
                     }
+  (* TODO the special-casing of \n and \t is redundant with charinstring/parse_char_in_string *)
+  | "\\n"           { string_buf := (String.make 1 '\\') :: !string_buf;
+                      string_buf := (String.make 1 'n') :: !string_buf;
+                      read_string lexbuf }
+  | "\\t"           { string_buf := (String.make 1 '\\') :: !string_buf;
+                      string_buf := (String.make 1 't') :: !string_buf;
+                      read_string lexbuf }
   | charinstring    { string_buf := (String.make 1 (parse_char_in_string lexbuf)) :: !string_buf; read_string lexbuf }
   | '\\'            { backslashes := !backslashes + 1; read_string lexbuf }
   | eof             { EOF }

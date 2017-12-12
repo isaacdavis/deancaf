@@ -33,15 +33,39 @@ let str_icRegister = function
   | Esp -> "%esp"
   | InvalidReg -> "%invalid"
 
+let str_offset front_offset base_reg offset_reg scale =
+  if (front_offset < 0) || (scale < 0) then
+    failwith "str_offset: front_offset and scale should not be negative here";
+
+  let str_base_reg = str_icRegister base_reg in
+  let str_offset_reg = str_icRegister offset_reg in
+  let str_scale = Printf.sprintf "0x%x" scale in
+  let str_front_offset = Printf.sprintf "0x%x" front_offset in
+
+  str_front_offset ^ "(" ^ str_base_reg ^ ", " ^ str_offset_reg ^ ", " ^
+    str_scale ^ ")"
+
+let str_simple_offset offset reg =
+  if (offset < 0) then
+    failwith "str_simple_offset: offset should not be negative here";
+  let str_reg = str_icRegister reg in
+  let str_offset = Printf.sprintf "0x%x" offset in
+
+  str_offset ^ "(" ^ str_reg ^ ")"
+
 let str_icVal = function
   | LiteralVal lit -> str_icLiteral lit
-  | LocalVal offset -> "-0x" ^ (Printf.sprintf "%x" (abs offset)) ^ "(%ebp)"
+  | LocalVal offset ->
+    if offset < 0 then
+      (Printf.sprintf "-0x%x" (abs offset)) ^ "(%ebp)"
+    else
+      (Printf.sprintf "0x%x" offset) ^ "(%ebp)"
   | IdVal id ->
     let offset = offset_mgr#lookup id in
     if offset < 0 then
-      "-0x" ^ (Printf.sprintf "%x" (abs offset)) ^ "(%ebp)"
+      (Printf.sprintf "-0x%x" (abs offset)) ^ "(%ebp)"
     else
-      "0x" ^ (Printf.sprintf "%x" offset) ^ "(%ebp)"
+      (Printf.sprintf "0x%x" offset) ^ "(%ebp)"
   | VerbatimVal s -> s
   | RegisterVal r -> str_icRegister r
 
@@ -56,6 +80,7 @@ let str_icBinOp = function
   | Or -> "orl"
   | Mod -> "divl"
   | Xor -> "xorl"
+  | Lea -> "leal"
 
 let str_icUnOp = function
   | Pos -> failwith "this is more complicated than a single instruction"
@@ -85,6 +110,11 @@ let out_call v =
   out_str ("call " ^ v_str);
   output_newlines 1
 
+let out_call_indirect v =
+  let v_str = str_icVal v in
+  out_str ("call *" ^ v_str);
+  output_newlines 1
+
 let str_icUnStatement unop v =
   match unop with
   | Pos -> () (* TODO *)
@@ -93,10 +123,15 @@ let str_icUnStatement unop v =
   | Not ->
     out_binExpr Xor (LiteralVal(IntLiteral(1))) v
 
+(* TODO is this exhaustive? Probably not *)
 let register_needed v1 v2 =
   match v1 with
-  | LiteralVal l -> false
-  | _ -> true
+  | LiteralVal _ -> false
+  | RegisterVal _ -> false
+  | _ ->
+    (match v2 with
+    | RegisterVal _ -> false
+    | _ -> true)
 
 (* TODO fix to do what's needed with div, etc. *)
 let str_icBinStatement binop v1 v2 =
@@ -122,7 +157,76 @@ let str_icBinStatement binop v1 v2 =
   | Or -> "orl "
   | Mod -> "divl " *)
 
-let str_icArrayStatement dest v i = () (* TODO *)
+let str_icArrayStatement dest v i =
+  (* TODO array access works but not assignment *)
+  let ebx = RegisterVal(Ebx) in
+  let ecx = RegisterVal(Ecx) in
+  let offset = str_offset data_sz Ebx Ecx data_sz in
+  out_binExpr Move v ebx;
+  out_binExpr Move i ecx;
+  let offset_val = VerbatimVal(offset) in
+  (* TODO works but is sketchy *)
+  if register_needed offset_val dest then begin
+    let edx = RegisterVal(Edx) in
+    out_binExpr Move offset_val edx;
+    out_binExpr Move edx dest
+  end
+  else
+    out_binExpr Move offset_val dest
+
+let str_icNewArrayStatement dest t dims =
+  List.iter out_push (List.rev dims);
+  out_push (LiteralVal(IntLiteral(List.length dims)));
+  (* Enum for _$ArrayAllocate in runtime.c - all types are same size for now *)
+  ignore(t);
+  out_push (LiteralVal(IntLiteral(2)));
+  out_call (VerbatimVal("_$ArrayAllocate"));
+  out_binExpr Move (RegisterVal(Eax)) dest
+
+let create_string dest arg =
+  let ebx = RegisterVal(Ebx) in
+  out_binExpr Lea arg ebx;
+  out_push ebx;
+  out_call (VerbatimVal("_$CreateString"));
+  out_binExpr Move (RegisterVal(Eax)) dest
+
+let str_icNewObjStatement dest (cr : classRecord) args =
+
+  if (String.compare cr.name "String") == 0 then
+    create_string dest (List.hd args)
+  else begin
+    let ctor_name = mangle_name cr.name "" true in
+    let vt_name = vtable_name cr.name in
+    let eax = RegisterVal(Eax) in
+    let ebx = RegisterVal(Ebx) in
+
+    out_push(LiteralVal(IntLiteral(cr.size)));
+    out_call (VerbatimVal("malloc"));
+
+    let vtable_offset = str_simple_offset (data_sz * 2) Eax in
+    out_binExpr Move (VerbatimVal(vt_name)) ebx;
+    out_binExpr Move ebx (VerbatimVal(vtable_offset));
+    
+    out_binExpr Move eax dest;
+    List.iter out_push (List.rev args);
+    out_push dest;
+    out_call (VerbatimVal(ctor_name))
+  end
+
+let str_icMethodCallStatement dest callee offset args =
+  let ebx = RegisterVal(Ebx) in
+  let ecx = RegisterVal(Ecx) in
+
+  out_binExpr Move callee ebx;
+  let vtable_offset = str_simple_offset (data_sz * 2) Ebx in
+  out_binExpr Move (VerbatimVal(vtable_offset)) ecx;
+
+  out_binExpr Add (LiteralVal(IntLiteral(offset))) ecx;
+  List.iter out_push (List.rev args);
+  out_push callee;
+  out_call_indirect ecx
+
+let str_icFieldAccessStatement dest callee offset = ()
 
 let walk_statement mr statement =
   match statement with
@@ -135,20 +239,31 @@ let walk_statement mr statement =
   | ArrayStatement (dest, v, i) ->
     str_icArrayStatement dest v i
 
-  | NewArrayStatement (t, dims, dim) -> ()
-  | NewObjStatement(dest, cr, args) -> ()
-  | MethodCallStatement (dest, callee, offset, args) -> ()
+  | NewArrayStatement (dest, t, dims) ->
+    str_icNewArrayStatement dest t dims
+
+  | NewObjStatement(dest, cr, args) ->
+    str_icNewObjStatement dest cr args
+
+  | MethodCallStatement (dest, callee, offset, args) ->
+    str_icMethodCallStatement dest callee offset args
 
   | StaticMethodCallStatement (dest, idval, args) ->
     List.iter out_push (List.rev args);
     out_call idval;
     out_binExpr Move (RegisterVal(Eax)) dest
 
+  | FieldAccessStatement (dest, callee, offset) ->
+    str_icFieldAccessStatement dest callee offset
 
-  | FieldAccessStatement (dest, callee, offset) -> ()
   | IfStatement (tbl, loc , cond, statements) -> ()
   | WhileStatement (tbl, cond, statements) -> ()
-  | ReturnStatement (v_o) -> out_str "leave\nret\n"
+  | ReturnStatement (v_o) ->
+    (match v_o with
+    | Some v ->
+      out_binExpr Move v (RegisterVal(Eax))
+    | None -> ());
+    out_str "leave\nret\n"
   | ContinueStatement -> ()
   | BreakStatement -> ()
   | SuperStatement args -> ()
@@ -180,9 +295,11 @@ let write_data_section n c =
 (* TODO rename to avoid naming conflicts with other modules, or make private *)
 let walk_method (cr : classRecord) mr =
   if not (is_runtime_class cr.name) then begin
+    let ebp = RegisterVal(Ebp) in
+    let esp = RegisterVal(Esp) in
     out_str (mr.name ^ ":\n");
-    out_str "push %ebp\n";
-    out_str "mov %ebp, %esp\n";
+    out_push ebp;
+    out_binExpr Move esp ebp;
     if mr.size > 0 then
       out_binExpr Sub (LiteralVal(IntLiteral(mr.size))) (RegisterVal(Esp));
     offset_mgr#push mr.local_offset_table;    

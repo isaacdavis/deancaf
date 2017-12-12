@@ -14,7 +14,8 @@ let raise_forbidden_error lexbuf =
   let lnum = string_of_int pos.pos_lnum in
   let column = string_of_int (1 + pos.pos_cnum - pos.pos_bol) in
   let token = Lexing.lexeme lexbuf in
-  let s = "Forbidden word: line " ^ lnum ^ ", column " ^ column ^ ": " ^ token ^ "\n" in
+  let s = "Forbidden word: line " ^ lnum ^ ", column " ^ column ^ ": " ^ token ^
+    "\n" in
   raise (ForbiddenWordError(s))
 
 let raise_syntax_error lexbuf =
@@ -22,7 +23,8 @@ let raise_syntax_error lexbuf =
   let lnum = string_of_int pos.pos_lnum in
   let column = string_of_int (1 + pos.pos_cnum - pos.pos_bol) in
   let token = Lexing.lexeme lexbuf in
-  let s = "Syntax error: line " ^ lnum ^ ", column " ^ column ^ ": " ^ token ^ "\n" in
+  let s = "Syntax error: line " ^ lnum ^ ", column " ^ column ^ ": " ^ token ^
+    "\n" in
   raise (SyntaxError(s))
 
 let parse_char lexbuf =
@@ -228,14 +230,17 @@ rule read = parse
                       else
                         raise_syntax_error lexbuf
                     }
-  (* TODO the special-casing of \n and \t is redundant with charinstring/parse_char_in_string *)
+  (* TODO the special-casing of \n and \t is redundant with
+     charinstring/parse_char_in_string *)
   | "\\n"           { string_buf := (String.make 1 '\\') :: !string_buf;
                       string_buf := (String.make 1 'n') :: !string_buf;
                       read_string lexbuf }
   | "\\t"           { string_buf := (String.make 1 '\\') :: !string_buf;
                       string_buf := (String.make 1 't') :: !string_buf;
                       read_string lexbuf }
-  | charinstring    { string_buf := (String.make 1 (parse_char_in_string lexbuf)) :: !string_buf; read_string lexbuf }
+  | charinstring    { string_buf := (String.make 1
+                        (parse_char_in_string lexbuf)) :: !string_buf;
+                      read_string lexbuf }
   | '\\'            { backslashes := !backslashes + 1; read_string lexbuf }
   | eof             { EOF }
   | _               { read_string lexbuf }

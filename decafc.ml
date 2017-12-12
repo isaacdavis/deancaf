@@ -4,10 +4,13 @@ open Sys
 open Ast
 open Codegen
 open Lexer
-open Offsetgen
+open Icodegen
 open Parser
-open Runtime
 open Typechecker
+
+(*
+  Compiler driver - contains main function
+*)
 
 (*
   TODO add type annotations everywhere
@@ -17,15 +20,41 @@ open Typechecker
   TODO enforce return types in type-checker
   TODO enforce presence of 1 public static void main in type-checker
   TODO make variable name styling consistent
-  TODO make sure it's safe to modify an argument to a function within the function
+  TODO make sure it's safe to modify an argument to a function within the
+    function
   TODO transfer modules to signatures/mli files
-  TODO add support for c-style array syntax (i.e. int arr[] instead of int[] arr)
+  TODO add support for c-style array syntax (i.e. int arr[] instead of int[]
+    arr)
   TODO check constructor modifiers in type-checker
   TODO make sure continue and break are only in loops in type-checker
   TODO implement different data sizes instead of just 4 bytes for everything
-  TODO can there be a static and non-static method with the same name in the same class?
+  TODO can there be a static and non-static method with the same name in the
+    same class?
   TODO make asm printing of DecafMain less blatantly shitty
-  TODO support local field accesses without "this" in front of them, or bar these accesses entirely - at any rate, don't crash
+  TODO support local field accesses without "this" in front of them, or bar
+    these accesses entirely - at any rate, don't crash
+  TODO enforce 80-char limit
+
+  Tuesday:
+
+  1 hr:
+  Comment code reasonably
+  Resolve any todos that seem easy
+  Sanitize todos but leave them in?
+  Add todos to blatantly unfinished parts
+  
+  1 hr:
+  Write some illustrative tests/prepare a presentation
+  Print everything out/email handin to spr
+
+  More time:
+
+  Working by 9 -> 5 hours of work until 2:30
+  -> 3 hours of this stuff:
+  Get if statements working
+  Get while loops working
+  Get field access working (easy)
+  Get array assignment/field assignment working
 *)
 
 (*
@@ -37,7 +66,8 @@ let printParseError lexbuf =
   let lnum = string_of_int pos.pos_lnum in
   let column = string_of_int (1 + pos.pos_cnum - pos.pos_bol) in
   let token = Lexing.lexeme lexbuf in
-  print_string("Parse error: line " ^ lnum ^ ", column " ^ column ^ ": " ^ token ^ "\n")
+  print_string("Parse error: line " ^ lnum ^ ", column " ^ column ^ ": " ^
+    token ^ "\n")
 
 (*
   Entry point for compiler driver.
@@ -49,8 +79,15 @@ let main () =
     print_endline "Usage: decafc <input file> <output file>";
     exit 1
   end;
- 
+
   let in_filename = Sys.argv.(1) in
+  let out_filename = Sys.argv.(2) in
+  if (String.compare in_filename out_filename) == 0 then
+  begin
+    print_endline "Input and output files cannot be the same";
+    exit 1
+  end;
+
   let in_channel = open_in in_filename in
 
   Runtime.setup ();
@@ -71,11 +108,10 @@ let main () =
     exit 1
   end;
 
-  let all_sorted_classes = add_runtime_classes sorted_classes in
+  let all_sorted_classes = Runtime.add_runtime_classes sorted_classes in
 
-  gen_offsets all_sorted_classes;
+  gen_icode all_sorted_classes;
 
-  let out_filename = Sys.argv.(2) in
   let asm_filename = out_filename ^ ".s" in
   let asm_channel = open_out asm_filename in
 
@@ -83,9 +119,8 @@ let main () =
 
   close_out asm_channel;
 
-  exit (Sys.command ("gcc -m32 -g -o " ^ out_filename ^ " " ^ asm_filename ^ " " ^
+  exit (Sys.command ("gcc -m32 -o " ^ out_filename ^ " " ^ asm_filename ^ " " ^
     "runtime.c"));
 ;;
 
-(* Wheeeeeeee gogogo! *)
 main()

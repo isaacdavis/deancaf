@@ -2,7 +2,6 @@
 %{
 
 open Ast
-open Globals
 open Runtime
 open Symboltable
 open Typechecker
@@ -23,7 +22,8 @@ let make_class name super members =
             | Method (n, _, _, _, _, _) -> method_table#put n s
             | Constructor (_, _, _, _, _) ->
                 if !ctor_found then
-                    type_err_list := ("Duplicate constructor: " ^ strMember s) ::
+                    type_err_list :=
+                        ("Duplicate constructor: " ^ strMember s) ::
                         !type_err_list
                 else begin
                     ctor_found := true;
@@ -200,11 +200,13 @@ classList
     ;
 
 singleClass
-    : CLASS ID LBRACE RBRACE                    { make_class $2 object_class [] }
+    : CLASS ID LBRACE RBRACE                    { make_class $2 object_class
+                                                  [] }
 
     | CLASS ID super LBRACE RBRACE              { make_class $2 $3 [] }
 
-    | CLASS ID LBRACE memberlist RBRACE         { make_class $2 object_class $4 }
+    | CLASS ID LBRACE memberlist RBRACE         { make_class $2 object_class
+                                                  $4 }
 
     | CLASS ID super LBRACE memberlist RBRACE   { make_class $2 $3 $5 }
     ;
@@ -225,8 +227,12 @@ member
     ;
 
 field
-    : modifierlist typeD varDeclList SEMICOLON  { List.map (fun d -> Field($1, $2, d)) $3 }
-    | typeD varDeclList SEMICOLON               { List.map (fun d -> Field([Public], $1, d)) $2 }
+    : modifierlist typeD varDeclList SEMICOLON  { List.map
+                                                  (fun d -> Field($1, $2, d))
+                                                  $3 }
+    | typeD varDeclList SEMICOLON               { List.map
+                                                  (fun d ->
+                                                  Field([Public], $1, d)) $2 }
     ;
 
 modifierlist
@@ -240,8 +246,11 @@ methodDecl
     ;
 
 ctor
-    : modifierlist ID formalArgs block          { [make_constructor (ClassType($2)) $1 $3 $4] }
-    | ID formalArgs block                       { [make_constructor (ClassType($1)) [Public] $2 $3]}
+    : modifierlist ID formalArgs block          { [make_constructor
+                                                  (ClassType($2)) $1 $3 $4] }
+    | ID formalArgs block                       { [make_constructor
+                                                  (ClassType($1)) [Public] $2
+                                                  $3] }
     ;
 
 modifier
@@ -277,10 +286,11 @@ formalArg
                 {name = declName; t = ArrayType(CharType, declCnt)}
             | IntType ->
                 {name = declName; t = ArrayType(IntType, declCnt)}
-            (* TODO should a void type in a formal arg be a parse error? Or maybe offload to type checker *)
+            (* TODO should a void type in a formal arg be a parse error? Or
+               maybe offload to type checker *)
             | VoidType ->
                 {name = declName; t = ArrayType(VoidType, declCnt)}
-            (* TODO these aren't really parse errors *)
+            (* TODO these aren't really parse errors but semantic errors *)
             | MethodType (_, _, _) -> raise Parsing.Parse_error
         else
             {name = declName; t = $1}
@@ -312,8 +322,14 @@ varDeclList
     ;
 
 varDecl
-    : varDeclId ASGN expr                       { {name = fst $1; dim = snd $1; expr = Some $3} }
-    | varDeclId                                 { {name = fst $1; dim = snd $1; expr = None} }
+    : varDeclId ASGN expr                       { { name = fst $1
+                                                  ; dim = snd $1
+                                                  ; expr = Some $3
+                                                  } }
+    | varDeclId                                 { { name = fst $1
+                                                  ; dim = snd $1
+                                                  ; expr = None
+                                                  } }
     ;
 
 varDeclId
@@ -332,19 +348,21 @@ statementList
     ;
 
 statement
-    : SEMICOLON                                         { EmptyStatement }
-    | typeD varDeclList SEMICOLON                       { DeclStatement($1, $2) }
+    : SEMICOLON                                 { EmptyStatement }
+    | typeD varDeclList SEMICOLON               { DeclStatement($1, $2) }
     | IF LPAREN expr RPAREN statement
-        %prec LOWER_THAN_ELSE                           { make_if $3 $5 None }
-    | IF LPAREN expr RPAREN statement ELSE statement    { make_if $3 $5 (Some $7) }
-    | expr SEMICOLON                                    { ExprStatement($1) }
-    | WHILE LPAREN expr RPAREN statement                { WhileStatement(new symbol_table, $3, $5) }
-    | RETURN SEMICOLON                                  { ReturnStatement(None) }
-    | RETURN expr SEMICOLON                             { ReturnStatement(Some $2) }
-    | CONTINUE SEMICOLON                                { ContinueStatement }
-    | BREAK SEMICOLON                                   { BreakStatement }
-    | block                                             { make_block $1 }
-    | SUPER actualArgs SEMICOLON                        { SuperStatement($2) }
+        %prec LOWER_THAN_ELSE                   { make_if $3 $5 None }
+    | IF LPAREN expr RPAREN statement ELSE
+        statement                               { make_if $3 $5 (Some $7) }
+    | expr SEMICOLON                            { ExprStatement($1) }
+    | WHILE LPAREN expr RPAREN statement        { WhileStatement(
+                                                    new symbol_table, $3, $5) }
+    | RETURN SEMICOLON                          { ReturnStatement(None) }
+    | RETURN expr SEMICOLON                     { ReturnStatement(Some $2) }
+    | CONTINUE SEMICOLON                        { ContinueStatement }
+    | BREAK SEMICOLON                           { BreakStatement }
+    | block                                     { make_block $1 }
+    | SUPER actualArgs SEMICOLON                { SuperStatement($2) }
     ;
 
 expr
@@ -369,14 +387,23 @@ expr
     ;
 
 primary
-    : newArrayExpr                              { NewArrayPrimary(make_default_typebox (), $1) }
-    | nonNewArrayExpr                           { NonNewArrayPrimary(make_default_typebox (), $1) }
-    | ID                                        { IdPrimary(make_default_typebox (), $1) }
+    : newArrayExpr                              { NewArrayPrimary(
+                                                    make_default_typebox (),
+                                                    $1) }
+    | nonNewArrayExpr                           { NonNewArrayPrimary(
+                                                    make_default_typebox (),
+                                                    $1) }
+    | ID                                        { IdPrimary(make_default_typebox
+                                                    (), $1) }
     ;
 
 newArrayExpr
-    : NEW ID dimensionList                      { {t = ClassType($2); dimList = $3} }
-    | NEW primitiveType dimensionList           { {t = $2; dimList = $3}}
+    : NEW ID dimensionList                      { { t = ClassType($2)
+                                                  ; dimList = $3
+                                                  } }
+    | NEW primitiveType dimensionList           { { t = $2
+                                                  ; dimList = $3
+                                                  }}
     ;
 
 dimensionList
@@ -406,8 +433,12 @@ fieldExpr
     ;
 
 arrayExpr
-    : ID dimension                              { ArrayExpr(IdPrimary(make_default_typebox (), $1), $2) }
-    | nonNewArrayExpr dimension                 { ArrayExpr(NonNewArrayPrimary(make_default_typebox (), $1), $2) }
+    : ID dimension                              { ArrayExpr(IdPrimary(
+                                                    make_default_typebox (),
+                                                    $1), $2) }
+    | nonNewArrayExpr dimension                 { ArrayExpr(NonNewArrayPrimary(
+                                                    make_default_typebox (),
+                                                    $1), $2) }
     ;
 
 literal

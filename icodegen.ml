@@ -3,14 +3,16 @@ open Ast
 open Icode
 open Symboltable
 
-let class_record_table : classRecord symbol_table = new symbol_table
-let method_frame_table : icMethod symbol_table = new symbol_table
+let class_record_table : icClassRecord symbol_table = new symbol_table
+let method_frame_table : icMethodFrame symbol_table = new symbol_table
 let string_literal_table : string symbol_table = new symbol_table
 
+(* Manages scopes *)
 let offset_mgr : int symbol_table_manager = new symbol_table_manager
 
 (* Relative to start of class object *)
-let curr_field_offset = ref 0
+(* Space for super ptr and vtable *)
+let curr_field_offset = ref (2 * data_sz )
 
 (* Relative to start of vtable *)
 let curr_method_offset = ref 0
@@ -20,7 +22,7 @@ let min_local_offset = ref (-data_sz)
 let curr_local_offset = ref (-data_sz)
 let curr_param_offset = ref (2 * data_sz)
 
-
+(* Allocates string literals *)
 let string_id = ref 0
 let alloc_string s =
   let name = "_S$" ^ (string_of_int !string_id) in
@@ -28,12 +30,12 @@ let alloc_string s =
   string_id := !string_id + 1;
   VerbatimVal(name)
 
+(* Stack frame offset management *)
 let alloc_local_space () =
   let off = !curr_local_offset in
   curr_local_offset := !curr_local_offset - data_sz;
   min_local_offset := min !curr_local_offset !min_local_offset;
   off
-
 let reset_local_space () =
   min_local_offset := -data_sz;
   curr_local_offset := -data_sz;
@@ -71,20 +73,13 @@ let convert_binop = function
   | And -> And
   | Or -> Or
   | Mod -> Mod
-  | _ -> failwith "convert_binop called on cond"
-
-let convert_cond = function
-  | Ast.Greater -> Icode.Greater
+  | Greater -> Greater
   | Less -> Less
   | Equals -> Equals
   | Geq -> Geq
   | Leq -> Leq
   | Neq -> Neq
-  | _ -> failwith "convert_cond called on binop"
  
-(* TODO factor stuff out into this method from walk_member
-let add_formals_to_table m formals = *)
-
 (* TODO it is horribly naive to put every literal in a memory address *)
 let walk_literal m container l =
   let cont = get_container container in
@@ -223,7 +218,6 @@ and get_primary_type = function
   | NonNewArrayPrimary (tb, _) -> tb.t
   | IdPrimary (tb, _) -> tb.t
 
-(* TODO handle offsets with temporaries *)
 and walk_expr m container e =
   match e with
   | UnOpExpr (op, sube) ->
@@ -235,7 +229,7 @@ and walk_expr m container e =
     let r1_container = walk_expr m container e1 in
     let r2_container = walk_expr m None e2 in
     m.statements <-
-      (* Order of exprs switched because this is how asm does it *)
+      (* Order of exprs switched because this is how at&t asm does it *)
       BinStatement(convert_binop op, r2_container, r1_container) ::
       m.statements;
     r1_container
@@ -258,7 +252,6 @@ let walk_vardecl m t decl =
         m.statements)
 
 let rec walk_statement m statement =
-
   let starting_offset = !curr_local_offset in
 
   (match statement with
@@ -267,39 +260,15 @@ let rec walk_statement m statement =
 
     List.iter (walk_vardecl m t) decls
 
-  | IfStatement (then_tbl, else_tbl_o, e, then_statement, else_statement_o) -> ()
-   (*  let ic_then_tbl = new symbol_table in
-    let add tbl k v =
-        tbl#put k !curr_local_offset;
-        curr_local_offset := !curr_local_offset - get_type_size v
-    in
-
-    then_tbl#iter add (ic_then_tbl);
-
-
-
-    match else_statement_o with
-    | None ->
-
-    (match else_tbl_o with
-    | None -> ()
-    | Some else_tbl -> else_tbl#iter add); *)
-
-
+  | IfStatement (then_tbl, else_tbl_o, e, then_statement, else_statement_o) ->
+    ()
+    (* TODO *)
 
   | ExprStatement e ->
     ignore(walk_expr m None e)
 
   | WhileStatement (tbl, e, statement) -> ()
-    (* let ic_tbl = new symbol_table in
-    let add tbl k v =
-        tbl#put k !curr_local_offset;
-        curr_local_offset := !curr_local_offset - data_sz
-    in
-    tbl#iter add (ic_tbl); *)
-
-
-
+    (* TODO *)
 
   | ReturnStatement e_o ->
     (match e_o with
@@ -318,6 +287,7 @@ let rec walk_statement m statement =
     let arg_loc_list = List.map (walk_expr m None) args in
     m.statements <- SuperStatement(arg_loc_list) :: m.statements);
 
+  (* Reclaim offsets of temporaries *)
   curr_local_offset := starting_offset
 
 let walk_member cr cname member =
@@ -328,6 +298,7 @@ let walk_member cr cname member =
       cr.field_offset_table#put decl.name !curr_field_offset;
       curr_field_offset := !curr_field_offset + data_sz
     end
+
   | Method (mname, _, tbl, mods, formals, _) ->
     if not (List.mem Static mods) &&
       not (cr.method_offset_table#contains mname) then
@@ -396,6 +367,7 @@ let walk_member cr cname member =
     m.size <- -(!min_local_offset);
     method_frame_table#put mangled_name m
 
+(* Add superclass offsets to subclass records *)
 let add_super_members c =
   match c.super with
   | None -> ()
@@ -408,7 +380,7 @@ let add_super_members c =
 
     super.field_offset_table#iter add_to_field_table;
     super.method_offset_table#iter add_to_method_table;
-    curr_field_offset := super.size - data_sz;
+    curr_field_offset := super.size;
     curr_method_offset := super.method_offset_table#size * data_sz
 
 let walk_class_offsets c =
@@ -435,13 +407,12 @@ let walk_class_offsets c =
     c.fieldTable#iter walk_member_iter;
     c.methodTable#iter walk_member_iter;
     walk_member cr name c.constructor;
-    (* space for vtable and super ptr as well *)
-    cr.size <- !curr_field_offset + (2 * data_sz);
+    cr.size <- !curr_field_offset;
     class_record_table#put name cr
 
   | _ -> failwith "class does not have ClassType"
 
-let gen_offsets classlist =
+let gen_icode classlist =
   List.iter walk_class_offsets classlist;
 
   let walk_member_statements c member =

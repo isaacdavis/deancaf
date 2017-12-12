@@ -39,6 +39,7 @@ type astType =
   | CharType
   | IntType
   | VoidType
+  (* callee type, arg types, return type *)
   | MethodType of astType * astType list * astType
   (* TODO null, init, meta? *)
 
@@ -69,11 +70,17 @@ and astNonNewArrayExpr =
     LiteralExpr of astLiteral
   | ThisExpr
   | ParenExpr of astExpr
+  (* class, constructor args *)
   | NewObjExpr of string * astExpr list
+  (* method, args *) 
   | ThisCallExpr of string * astExpr list
+  (* callee, method, args *)
   | MethodCallExpr of astPrimary * string * astExpr list
+  (* method, args *)
   | SuperCallExpr of string * astExpr list
+  (* array, array index *)
   | ArrayExpr of astPrimary * astExpr
+  (* object, field name *)
   | FieldExpr of astPrimary * string
   | SuperFieldExpr of string
 
@@ -96,8 +103,11 @@ type astVarDecl =
 type astStatement = 
     EmptyStatement
   | DeclStatement of astType * astVarDecl list
-  | IfStatement of astType symbol_table * astType symbol_table option * astExpr * astStatement * astStatement option
+  (* symbol tables for branches, boolean expression, branches *)
+  | IfStatement of astType symbol_table * astType symbol_table option * astExpr
+      * astStatement * astStatement option
   | ExprStatement of astExpr
+  (* symbol table, boolean expression, statement to execute *)
   | WhileStatement of astType symbol_table * astExpr * astStatement
   | ReturnStatement of astExpr option
   | ContinueStatement
@@ -106,9 +116,14 @@ type astStatement =
   | SuperStatement of astExpr list
   
 type astMember =
+  (* modifiers, type, vardecl *)
     Field of astModifier list * astType * astVarDecl
-  | Method of string * astType * astType symbol_table * astModifier list * astFormal list * astStatement list
-  | Constructor of astType * astType symbol_table * astModifier list * astFormal list * astStatement list
+  (* name, type, symbol table, modifiers, formals, statements *)
+  | Method of string * astType * astType symbol_table * astModifier list *
+      astFormal list * astStatement list
+  (* type, symbol table, modifiers, formals, statements *)
+  | Constructor of astType * astType symbol_table * astModifier list *
+      astFormal list * astStatement list
 
 type astClass =
   { t: astType
@@ -167,7 +182,8 @@ let rec strType t =
   | CharType -> "charT"
   | IntType -> "intT"
   | VoidType -> "voidT"
-  | MethodType (c, pList, v) -> "methodT(" ^ strType c ^ ", " ^ List.fold_left strAppend "" pList ^ ", " ^ strType v ^ ")"
+  | MethodType (c, pList, v) -> "methodT(" ^ strType c ^ ", " ^
+      List.fold_left strAppend "" pList ^ ", " ^ strType v ^ ")"
 
 let strLiteral = function
   | NullLiteral -> "null"
@@ -181,13 +197,15 @@ let strFormal (f : astFormal) =
 
 let rec strExpr = function
   | UnOpExpr (op, e) -> "unOpExpr(" ^ strUnOp op ^ ", " ^ strExpr e ^ ")"
-  | BinOpExpr (op, a, b) -> "binOpExpr(" ^ strBinOp op ^ ", " ^ strExpr a ^ ", " ^ strExpr b ^ ")"
+  | BinOpExpr (op, a, b) -> "binOpExpr(" ^ strBinOp op ^ ", " ^ strExpr a ^
+      ", " ^ strExpr b ^ ")"
   | PrimaryExpr p -> "primaryExpr(" ^ strPrimary p ^ ")"
 
 and strNewArrayExpr (n : astNewArrayExpr) =
   let strAppend a x =
     a ^ strExpr x ^ "; " in
-  "newArrayExpr(" ^ strType n.t ^ ", " ^ List.fold_left strAppend "" n.dimList ^ ")"
+  "newArrayExpr(" ^ strType n.t ^ ", " ^ List.fold_left strAppend "" n.dimList ^
+     ")"
 
 and strNonNewArrayExpr n =
   let strAppend a x =
@@ -196,22 +214,28 @@ and strNonNewArrayExpr n =
   | LiteralExpr l -> "literalExpr(" ^ strLiteral l ^ ")"
   | ThisExpr -> "thisExpr"
   | ParenExpr e -> "parenExpr(" ^ strExpr e ^ ")"
-  | NewObjExpr (s, eList) -> "newObjExpr(" ^ s ^ ", " ^ List.fold_left strAppend "" eList ^ ")"
-  | ThisCallExpr (s, eList) -> "thisCallExpr(" ^ s ^ ", " ^ List.fold_left strAppend "" eList ^ ")"
-  | MethodCallExpr (p, s, eList) -> "methodCallExpr(" ^ strPrimary p ^ ", " ^ s ^ ", " ^ List.fold_left strAppend "" eList ^ ")"
-  | SuperCallExpr (s, eList) -> "superCallExpr(" ^ s ^ ", " ^ List.fold_left strAppend "" eList ^ ")"
+  | NewObjExpr (s, eList) -> "newObjExpr(" ^ s ^ ", " ^
+      List.fold_left strAppend "" eList ^ ")"
+  | ThisCallExpr (s, eList) -> "thisCallExpr(" ^ s ^ ", " ^
+      List.fold_left strAppend "" eList ^ ")"
+  | MethodCallExpr (p, s, eList) -> "methodCallExpr(" ^ strPrimary p ^ ", " ^
+      s ^ ", " ^ List.fold_left strAppend "" eList ^ ")"
+  | SuperCallExpr (s, eList) -> "superCallExpr(" ^ s ^ ", " ^
+      List.fold_left strAppend "" eList ^ ")"
   | ArrayExpr (p, e) -> "arrayExpr(" ^ strPrimary p ^ ", " ^ strExpr e ^ ")"
   | FieldExpr (p, s) -> "fieldExpr(" ^ strPrimary p ^ ", " ^ s ^ ")"
   | SuperFieldExpr s -> "superFieldExpr(" ^ s ^ ")"
 
 and strPrimary = function
   | NewArrayPrimary (_, n) -> "newArrayPrimary(" ^ strNewArrayExpr n ^ ")"
-  | NonNewArrayPrimary (_, n) -> "nonNewArrayPrimary(" ^ strNonNewArrayExpr n ^ ")"
+  | NonNewArrayPrimary (_, n) -> "nonNewArrayPrimary(" ^ strNonNewArrayExpr n ^
+      ")"
   | IdPrimary (_, s) -> "idPrimary(" ^ s ^ ")"
 
 let strVarDecl v =
   match v.expr with
-    | Some e -> "varDecl(" ^ v.name ^ ", " ^ string_of_int v.dim ^ ", " ^ strExpr e ^ ")"
+    | Some e -> "varDecl(" ^ v.name ^ ", " ^ string_of_int v.dim ^ ", " ^
+        strExpr e ^ ")"
     | None -> "varDecl(" ^ v.name ^ ", " ^ string_of_int v.dim ^ ")"
 
 let rec strStatement s =
@@ -223,14 +247,17 @@ let rec strStatement s =
 
   match s with
   | EmptyStatement -> "emptyStatement"
-  | DeclStatement (t, vList) -> "declStatement(" ^ strType t ^ ", " ^ List.fold_left strAppendVarDecl "" vList ^ ")"
-  | IfStatement (_, _, e, sA, sO) -> "ifStatement(" ^ strExpr e ^ ", " ^ strStatement sA ^ ", " ^
+  | DeclStatement (t, vList) -> "declStatement(" ^ strType t ^ ", " ^
+      List.fold_left strAppendVarDecl "" vList ^ ")"
+  | IfStatement (_, _, e, sA, sO) -> "ifStatement(" ^ strExpr e ^ ", " ^
+      strStatement sA ^ ", " ^
     (match sO with
     | Some sB -> strStatement sB
     | None -> "")
     ^ ")"
   | ExprStatement e -> "exprStatement(" ^ strExpr e ^ ")"
-  | WhileStatement (_, e, sW) -> "whileStatement(" ^ strExpr e ^ ", " ^ strStatement sW ^ ")"
+  | WhileStatement (_, e, sW) -> "whileStatement(" ^ strExpr e ^ ", " ^
+      strStatement sW ^ ")"
   | ReturnStatement eO -> "returnStatement(" ^
     (match eO with
     | Some e -> strExpr e
@@ -238,8 +265,10 @@ let rec strStatement s =
     ^ ")"
   | ContinueStatement -> "continueStatement"
   | BreakStatement -> "breakStatement"
-  | BlockStatement (_, sList) -> "blockStatement(" ^ List.fold_left strAppendStatement "" sList ^ ")"
-  | SuperStatement eList -> "superStatement(" ^ List.fold_left strAppendExpr "" eList ^ ")"
+  | BlockStatement (_, sList) -> "blockStatement(" ^
+      List.fold_left strAppendStatement "" sList ^ ")"
+  | SuperStatement eList -> "superStatement(" ^
+      List.fold_left strAppendExpr "" eList ^ ")"
 
 let strMember m =
   let strAppend f a x =
@@ -249,8 +278,9 @@ let strMember m =
   let strAppendStatement = strAppend strStatement in
 
   match m with
-  | Field (mList, t, v) -> "field(" ^ List.fold_left strAppendModifier "" mList ^
-    ", " ^ strType t ^ ", " ^ strVarDecl v ^ ")"
+  | Field (mList, t, v) -> "field(" ^
+      List.fold_left strAppendModifier "" mList ^ ", " ^ strType t ^ ", " ^
+      strVarDecl v ^ ")"
   | Method (s, t, _, mList, fList, sList) -> "method(" ^ s ^ "," ^ strType t ^
     "," ^ List.fold_left strAppendModifier "" mList ^ ", " ^
     List.fold_left strAppendFormal "" fList  ^ "," ^

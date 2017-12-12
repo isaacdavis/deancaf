@@ -1,7 +1,7 @@
 CC = ocamlbuild
 EXECS = decafc.byte
-SOURCES = ast.ml codegen.ml decafc.ml globals.ml icode.ml offsetgen.ml \
-			runtime.ml symboltable.ml typechecker.ml lexer.mll parser.mly
+SOURCES = ast.ml codegen.ml decafc.ml icode.ml icodegen.ml runtime.ml \
+			symboltable.ml typechecker.ml lexer.mll parser.mly
 
 all: decafc
 

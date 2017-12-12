@@ -1,7 +1,12 @@
 
 open Ast
-open Globals
 open Symboltable
+
+(*
+  Type-checker for decaf ast
+*)
+
+let type_err_list : string list ref = ref []
 
 let class_table : astClass symbol_table = new symbol_table
 let scope_mgr : astType symbol_table_manager = new symbol_table_manager
@@ -147,7 +152,6 @@ let check_constructor_statements c =
   | Method (_, _, _, _, _, _) ->
     failwith "check_constructor_statements called on method"
   | Constructor (t, tbl, mods, formals, statements) ->
-    (* TODO clean up logic? *)
     if List.length statements > 0 then begin
       (match List.hd statements with
       | SuperStatement _ -> ()
@@ -277,7 +281,8 @@ and walk_nonnew nn =
         | Some m ->
           (match m with
           | Field (_, _, _) -> failwith "field in method table"
-          | Constructor (_, _, _, _, _) -> failwith "constructor in method table"
+          | Constructor (_, _, _, _, _) ->
+              failwith "constructor in method table"
           | Method (_, ret, _, _, _, _) ->
             let arg_types = List.map (fun e -> walk_expr e) arglist in
             let arg_meth_type = MethodType(c.t, arg_types, ret) in
@@ -415,11 +420,9 @@ and walk_primary p from_method_call =
             tb.t <- c.t;
             c.t
           | None -> type_err_list := ("Undefined name: " ^ s) :: !type_err_list;
-            (* TODO what to return here? *)
             ClassType("Object"))
         else begin
         type_err_list := ("Undefined name: " ^ s) :: !type_err_list;
-        (* TODO what to return here? *)
         ClassType("Object")
         end))
 
@@ -485,7 +488,15 @@ let rec walk_statement st =
   | DeclStatement (t, vardecls) ->
     check_type_exists t;
     List.iter (check_vardecl t) vardecls;
-    List.iter (fun d -> scope_mgr#top#put d.name t) vardecls
+
+    let check_fun d =
+      if scope_mgr#top#contains d.name then
+        type_err_list := ("Previously declared: " ^ d.name) :: !type_err_list
+      else
+        scope_mgr#top#put d.name t
+    in
+
+    List.iter check_fun vardecls
 
   | IfStatement (iftbl, elsetbl_o, cond, ifs, elses_o) ->
     let t = walk_expr cond in
@@ -603,7 +614,8 @@ let walk_class n c =
   let discard_fst _ b = walk_member b in
 
   curr_class := c;
-  (* TODO jank jank jank *)
+  (* TODO this special-cases Object because it can't call super() in its
+     constructor - fix to be less of a "special case"? *)
   if (String.compare n "Object") != 0 then
     check_constructor_statements c;
   c.fieldTable#iter discard_fst;

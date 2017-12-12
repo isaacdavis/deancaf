@@ -1,16 +1,14 @@
 
-open Globals
+(*
+  Symbol table utility classes
+*)
 
 class ['a] symbol_table = object
 
   val mutable table : (string, 'a) Hashtbl.t = Hashtbl.create 0
 
-  (* TODO the fail-on-repeated-put behavior is janky outside the context of the typechecker *)
   method put (k : string) (v : 'a) =
-    if Hashtbl.mem table k then
-      type_err_list := ("Previously declared: " ^ k) :: !type_err_list
-    else
-      Hashtbl.add table k v
+    Hashtbl.add table k v
 
   method get (k : string) : 'a =
     try
@@ -43,7 +41,8 @@ class ['a] symbol_table = object
 
 end
 
-(* TODO make not crappy - roll my own stack? *)
+(* A stack of symbol tables to manage nested scopes *)
+(* TODO make more efficient - roll my own stack? *)
 class ['a] symbol_table_manager = object
 
   val stack : 'a symbol_table Stack.t = Stack.create ()

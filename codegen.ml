@@ -1,18 +1,25 @@
 
 open Ast
 open Icode
-open Offsetgen
+open Icodegen
 open Runtime
 open Symboltable
 open Typechecker
 
+(*
+  32-bit x86 code generation from icode
+*)
+
 let data_header = ".data\n\n"
 let text_header = ".text\n.globl _V$String\n.globl _$DecafMain\n\n"
 
+(* default function epilogue *)
 let default_epilogue = "mov $0, %eax\nleave\nret\n"
 
+(* Channel to write to *)
 let out_channel = ref stdout
 
+(* output primitives *)
 let output_newlines n = for _ = 1 to n do output !out_channel "\n" 0 1 done
 let out_str s = output !out_channel s 0 (String.length s)
 
@@ -33,6 +40,7 @@ let str_icRegister = function
   | Esp -> "%esp"
   | InvalidReg -> "%invalid"
 
+(* constructs a complicated address offset i.e. 0x4(%ebx, %ecx, 0x8) *)
 let str_offset front_offset base_reg offset_reg scale =
   if (front_offset < 0) || (scale < 0) then
     failwith "str_offset: front_offset and scale should not be negative here";
@@ -45,6 +53,7 @@ let str_offset front_offset base_reg offset_reg scale =
   str_front_offset ^ "(" ^ str_base_reg ^ ", " ^ str_offset_reg ^ ", " ^
     str_scale ^ ")"
 
+(* Constructs a simple address offset i.e. 0x4(%ebx) *)
 let str_simple_offset offset reg =
   if (offset < 0) then
     failwith "str_simple_offset: offset should not be negative here";
@@ -81,11 +90,12 @@ let str_icBinOp = function
   | Mod -> "divl"
   | Xor -> "xorl"
   | Lea -> "leal"
+  | _ -> failwith "conditionals not supported for now"
 
 let str_icUnOp = function
-  | Pos -> failwith "this is more complicated than a single instruction"
+  | Pos -> failwith "unary pos not supported for now"
   | Neg -> "negl"
-  | Not -> failwith "this is actually a binop"
+  | Not -> failwith "unary not should have been converted to xor"
 
 let out_binExpr binop v1 v2 =
   let b_str = str_icBinOp binop in
@@ -115,7 +125,7 @@ let out_call_indirect v =
   out_str ("call *" ^ v_str);
   output_newlines 1
 
-let str_icUnStatement unop v =
+let write_icUnStatement unop v =
   match unop with
   | Pos -> () (* TODO *)
   | Neg ->
@@ -123,6 +133,7 @@ let str_icUnStatement unop v =
   | Not ->
     out_binExpr Xor (LiteralVal(IntLiteral(1))) v
 
+(* Determines if we need to use a register intermediary when doing a binop *)
 (* TODO is this exhaustive? Probably not *)
 let register_needed v1 v2 =
   match v1 with
@@ -133,8 +144,8 @@ let register_needed v1 v2 =
     | RegisterVal _ -> false
     | _ -> true)
 
-(* TODO fix to do what's needed with div, etc. *)
-let str_icBinStatement binop v1 v2 =
+(* TODO fix to support division, multiplication, etc. *)
+let write_icBinStatement binop v1 v2 =
 
   if register_needed v1 v2 then begin
     out_binExpr Move v1 (RegisterVal(Ebx));
@@ -144,20 +155,7 @@ let str_icBinStatement binop v1 v2 =
     out_binExpr binop v1 v2
   end
 
-  (* match binop with
-  | Move ->
-    if register_needed v1 v2 then
-    out_str "movl "
-    out_str (str)
-  | Add -> "addl "
-  | Sub -> "subl "
-  | Mult -> "imull "
-  | Div -> "idivl "
-  | And -> "andl "
-  | Or -> "orl "
-  | Mod -> "divl " *)
-
-let str_icArrayStatement dest v i =
+let write_icArrayStatement dest v i =
   (* TODO array access works but not assignment *)
   let ebx = RegisterVal(Ebx) in
   let ecx = RegisterVal(Ecx) in
@@ -174,7 +172,7 @@ let str_icArrayStatement dest v i =
   else
     out_binExpr Move offset_val dest
 
-let str_icNewArrayStatement dest t dims =
+let write_icNewArrayStatement dest t dims =
   List.iter out_push (List.rev dims);
   out_push (LiteralVal(IntLiteral(List.length dims)));
   (* Enum for _$ArrayAllocate in runtime.c - all types are same size for now *)
@@ -183,6 +181,7 @@ let str_icNewArrayStatement dest t dims =
   out_call (VerbatimVal("_$ArrayAllocate"));
   out_binExpr Move (RegisterVal(Eax)) dest
 
+(* Create runtime String object *)
 let create_string dest arg =
   let ebx = RegisterVal(Ebx) in
   out_binExpr Lea arg ebx;
@@ -190,8 +189,7 @@ let create_string dest arg =
   out_call (VerbatimVal("_$CreateString"));
   out_binExpr Move (RegisterVal(Eax)) dest
 
-let str_icNewObjStatement dest (cr : classRecord) args =
-
+let write_icNewObjStatement dest (cr : icClassRecord) args =
   if (String.compare cr.name "String") == 0 then
     create_string dest (List.hd args)
   else begin
@@ -213,7 +211,7 @@ let str_icNewObjStatement dest (cr : classRecord) args =
     out_call (VerbatimVal(ctor_name))
   end
 
-let str_icMethodCallStatement dest callee offset args =
+let write_icMethodCallStatement dest callee offset args =
   let ebx = RegisterVal(Ebx) in
   let ecx = RegisterVal(Ecx) in
 
@@ -226,48 +224,51 @@ let str_icMethodCallStatement dest callee offset args =
   out_push callee;
   out_call_indirect ecx
 
-let str_icFieldAccessStatement dest callee offset = ()
-
 let walk_statement mr statement =
   match statement with
   | BinStatement (binop, v1, v2) ->
-    str_icBinStatement binop v1 v2
+    write_icBinStatement binop v1 v2
 
   | UnStatement (unop, v) ->
-    str_icUnStatement unop v
+    write_icUnStatement unop v
 
   | ArrayStatement (dest, v, i) ->
-    str_icArrayStatement dest v i
+    write_icArrayStatement dest v i
 
   | NewArrayStatement (dest, t, dims) ->
-    str_icNewArrayStatement dest t dims
+    write_icNewArrayStatement dest t dims
 
   | NewObjStatement(dest, cr, args) ->
-    str_icNewObjStatement dest cr args
+    write_icNewObjStatement dest cr args
 
   | MethodCallStatement (dest, callee, offset, args) ->
-    str_icMethodCallStatement dest callee offset args
+    write_icMethodCallStatement dest callee offset args
 
   | StaticMethodCallStatement (dest, idval, args) ->
     List.iter out_push (List.rev args);
     out_call idval;
     out_binExpr Move (RegisterVal(Eax)) dest
 
-  | FieldAccessStatement (dest, callee, offset) ->
-    str_icFieldAccessStatement dest callee offset
+  | FieldAccessStatement (dest, callee, offset) -> () (* TODO *)
 
-  | IfStatement (tbl, loc , cond, statements) -> ()
-  | WhileStatement (tbl, cond, statements) -> ()
+  | IfStatement (tbl, loc , cond, statements) -> () (* TODO *)
+
+  | WhileStatement (tbl, cond, statements) -> () (* TODO *)
+
   | ReturnStatement (v_o) ->
     (match v_o with
     | Some v ->
       out_binExpr Move v (RegisterVal(Eax))
     | None -> ());
     out_str "leave\nret\n"
-  | ContinueStatement -> ()
-  | BreakStatement -> ()
-  | SuperStatement args -> ()
 
+  | ContinueStatement -> () (* TODO *)
+
+  | BreakStatement -> () (* TODO *)
+
+  | SuperStatement args -> () (* TODO *)
+
+(* Writes vtables, etc. *)
 let write_data_section n c =
   let cr = class_record_table#get n in
   let vt_name = vtable_name cr.name in
@@ -292,8 +293,7 @@ let write_data_section n c =
   List.iter (fun t -> print_method_name (fst t)) !method_list;
   output_newlines 1
 
-(* TODO rename to avoid naming conflicts with other modules, or make private *)
-let walk_method (cr : classRecord) mr =
+let walk_method (cr : icClassRecord) mr =
   if not (is_runtime_class cr.name) then begin
     let ebp = RegisterVal(Ebp) in
     let esp = RegisterVal(Esp) in
@@ -316,10 +316,12 @@ let walk_method (cr : classRecord) mr =
     output_newlines 1
   end
 
+(* Writes methods, etc. *)
 let write_text_section n c =
   let cr = class_record_table#get n in
   let iter_fun k v =
-    (* TODO this does not support multiple methods called "main" and is therefore a dirty hack *)
+    (* TODO this does not support multiple methods called "main" and is
+       therefore a dirty hack *)
     if String.compare k "main" == 0 then out_str (main_method_name ^ ":\n");
     let m = method_frame_table#get (mangle_name cr.name k false) in
     walk_method cr m
@@ -328,6 +330,7 @@ let write_text_section n c =
   (* Constructor *)
   walk_method cr (method_frame_table#get (mangle_name cr.name "" true))
 
+(* Writes string literals *)
 let print_string_literals () =
   let print_string_literal k v =
     out_str (k ^ ": .ascii \"" ^ v ^ "\"");

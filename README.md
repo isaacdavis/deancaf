@@ -15,6 +15,6 @@ Run `make decafc`
 
 ## To run:
 
-`./decafc <file to be compiled> <output file>` compiles a decaf file and outputs assembly in \<output file.s\> and a binary in \<output file\>
+`./decafc <file to be compiled> <output file>` compiles a decaf file and outputs assembly in `<output file.s>` and a binary in `<output file>`
 
 Rad!
